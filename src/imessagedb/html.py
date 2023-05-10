@@ -1,0 +1,360 @@
+from datetime import datetime
+import re
+from alive_progress import alive_bar
+from iMessageDB import convert
+
+
+def generate_thread_row(message):
+    if message.is_from_me:
+        style = 'me'
+    else:
+        style = 'them'
+
+    text = message.text
+    # row_string = f'    <tr><td class="blank></td><td class="reply_text_{style}" > {text} </td ></tr>\n'
+    row_string = f'    <tr>' \
+                 f'      <td class="reply_text_{style}">\n' \
+                 f'        <a href="#{message.rowid}">\n' \
+                 f'          <button class="reply_text_{style}"> {text}</button>\n' \
+                 f'        </a>\n' \
+                 f'      </td>\n' \
+                 f'    </tr>\n'
+    return row_string
+
+
+def generate_thread_table(message_list, style):
+    table_string = f'  <table class="thread_table_{style}">\n'
+    for message in message_list:
+        table_string = f'{table_string}{generate_thread_row(message)}'
+    table_string = f'{table_string}  </table>\n<p>\n'
+    return table_string
+
+
+def replace_url_to_link(value):
+    """ From https://gist.github.com/guillaumepiot/4539986 """
+    
+    # Replace url to link
+    urls = re.compile(r"((https?):((//)|(\\\\))+[\w\d:#@%/;$()~_?\+-=\\\.&]*)", re.MULTILINE|re.UNICODE)
+    value = urls.sub(r'<a href="\1" target="_blank">\1</a>', value)
+    # Replace email to mailto
+    urls = re.compile(r"([\w\-\.]+@(\w[\w\-]+\.)+[\w\-]+)", re.MULTILINE|re.UNICODE)
+    value = urls.sub(r'<a href="mailto:\1">\1</a>', value)
+    return value
+
+
+def print_and_save(message, array, output_file):
+    array.append(message)
+    if output_file:
+        print(message, file=output_file)
+
+
+class HTMLOutput:
+    def __init__(self, me, person, numbers, message_list, attachment_list, inline=False, output_file=None):
+        self._me = me
+        self._person = person
+        self._numbers = numbers
+        self._message_list = message_list
+        self._attachment_list = attachment_list
+        self._inline = inline
+        self._output_file = output_file
+
+        self._day = 'UNK'
+        self._html_array = []
+        print_and_save(self.generate_head(), self._html_array, self._output_file)
+        print_and_save("<body>\n", self._html_array, self._output_file)
+        print_and_save(f"Got {len(self._message_list):,} messages with {self._person} [{self._numbers}]<p>\n",
+                       self._html_array, self._output_file)
+        print_and_save('<div class="picboxframe"  id="picbox"> <img src="" /> </div>',
+                       self._html_array, self._output_file)
+
+        self._html_array.append(self.generate_table(self._message_list))
+        print_and_save('</body>\n</html>\n',
+                       self._html_array, self._output_file)
+
+    def __repr__(self):
+        return ''.join(self._html_array)
+
+    def generate_table(self, message_list):
+        table_array = []
+        print_and_save('  <table class="main_table">\n', table_array, self._output_file)
+
+        previous_day = ''
+
+        message_count = 0
+        with alive_bar(len(message_list), title="Generating HTML", stats="({rate}, eta: {eta})") as bar:
+            for message in message_list:
+                message_count = message_count + 1
+
+                today = message.date[:10]
+                if today != previous_day:
+                    previous_day = today
+
+                    # If it's a new day, end the table, and start a new one
+                    print_and_save('</table>\n  <table class="main_table">\n', table_array, self._output_file)
+
+                    self._day = datetime(int(message.date[0:4]), int(message.date[5:7]), int(message.date[8:10]),
+                                         int(message.date[11:13]), int(message.date[14:16]),
+                                         int(message.date[17:19])).strftime('%a')
+                print_and_save(self.generate_row(message), table_array, self._output_file)
+                if message.attachments:
+                    bar()
+                else:
+                    bar(skipped=True)
+
+        print_and_save('</table>\n', table_array, self._output_file)
+        return ''.join(table_array)
+
+    def generate_row(self, message):
+        if message.is_from_me:
+            who = self._me
+            style = 'me'
+        else:
+            who = self._person
+            style = 'them'
+
+        thread_table = ""
+        if message.thread_originator_guid:
+            if message.thread_originator_guid in self._message_list.guids:
+                original_message = self._message_list.guids[message.thread_originator_guid]
+                thread_list = original_message.thread
+                thread_list[original_message.rowid] = original_message
+                print_thread = []
+                for i in sorted(thread_list.values(), key=lambda x: x.date):
+                    if i == message:
+                        break
+                    print_thread.append(i)
+                thread_table = generate_thread_table(print_thread, style)
+
+        attachments_string = ""
+        if message.attachments:
+            for attachment_key in message.attachments:
+                if attachment_key not in self._attachment_list.attachment_list:
+                    attachment_strings = f'{attachments_string} <span class="missing"> Attachment missing </span> '
+                    continue
+
+                attachment = self._attachment_list.attachment_list[attachment_key]
+                attachment_string = ""
+                if attachment.skip:
+                    continue
+                if attachment.missing:
+                    attachment_strings = f'{attachments_string} <span class="missing"> Attachment missing </span> '
+                    continue
+                if attachment._copy:
+                    if attachment.conversion_type == 'HEIC':
+                        print(f"Converting {attachment.destination_filename}")
+                        result = convert.convert_heic_image(attachment.original_path, attachment.destination_path)
+                    elif attachment.conversion_type == 'Audio' or attachment.conversion_type == 'Video':
+                        print(f"Converting {attachment.destination_filename}")
+                        convert.convert_audio_video(attachment.original_path, attachment.destination_path)
+                    else:
+                        attachment.copy_file()
+
+                attachment_id = f'attachment_{attachment.rowid}'
+                if attachment.popup_type == 'Picture':
+                    if self._inline:
+                        attachment_string = f'<p><a href="{attachment.html_path}" target="_blank">' \
+                            f'<img src="{attachment.html_path}" target="_blank"/><p>' \
+                            f' {attachment.html_path} </a>\n'
+                    else:
+                        attachment_string = f'''<a href="{attachment.html_path}" target="_blank"
+            onMouseOver="ShowPicture('picbox',1,'{attachment.html_path}')" 
+            onMouseOut="ShowPicture('picbox',0)"> {attachment.html_path} </a>
+'''
+                elif attachment.popup_type == 'Audio':
+                    # Not going to do popups for audio, just inline
+                    attachment_string = f'<p><audio controls>  <source src="{attachment.html_path}" ' \
+                        f'type="audio/mp3"></audio> <a href="{attachment.html_path}" ' \
+                        f'target="_blank"> {attachment.html_path} </a>\n'
+                elif attachment.popup_type == 'Video':
+                    if self._inline:
+                        attachment_string = f'<p><video controls>  <source src="{attachment.html_path}" ' \
+                            f' type="video/mp4"></video> <p><a href="{attachment.html_path}"' \
+                            f' target="_blank"> {attachment.html_path} </a>\n'
+                    else:
+                        attachment_string = f'''<a href="{attachment.html_path}" target="_blank"
+            onMouseOver="ShowMovie('picbox', 1, '{attachment.html_path}')"> {attachment.html_path} </a>
+'''
+
+                else:
+                    attachment_string = f'<a href="{attachment.html_path}" target="_blank"> ' \
+                                        f'{attachment.html_path} </a>\n'
+
+                attachments_string = f'{attachments_string} <p> {attachment_string}'
+
+        text = replace_url_to_link(f'{message.text} {attachments_string}')
+        row_string = f'    <tr id={message.rowid}>\n' \
+                     f'      <td class="date"> {self._day} {message.date} </td>\n' \
+                     f'      <td class="name_{style}"> {who}: </td>\n' \
+                     f'      <td class="text_{style}"> {thread_table} {text} </td >\n' \
+                     f'    </tr>\n'
+        return row_string
+
+    def generate_head(self):
+        css = '''    <style>
+table {
+    width: 100%;
+    table-layout: auto;
+}
+
+table.main_table {
+    border-bottom: 3px solid black;
+    border-spacing: 8px;
+}
+
+table.thread_table_me {
+    width: 50%;
+    margin-right: 0px;
+    margin-left: auto;
+    background: honeydew;
+    padding: 10px;
+    border-radius: 30px;
+}
+
+table.thread_table_them {
+    width: 50%;
+    margin-right: auto;
+    margin-left: 0px;
+    background: honeydew;
+    padding: 10px;
+    border-radius: 30px;
+}
+
+td {
+    padding: 0px;
+    margin: 0;
+    line-height : 1;
+}
+td.date {
+    text-align: left;
+    width: 150px;
+    vertical-align: text-middle;
+    font-size: 80%;
+}
+
+td.name_me {
+    text-align: right;
+    font-weight: bold;
+    color: blue;
+    width: 50px;
+    padding-right: 5px;
+    vertical-align: text-middle;
+    font-size: 80%;
+    
+}
+
+td.name_them {
+    text-align: right;
+    font-weight: bold;
+    color: Purple;
+    width: 50px;
+    padding-right: 5px;
+    vertical-align: text-middle;
+    font-size: 80%;
+    }
+
+td.text_me {
+    text-align: right;
+    word-wrap: break-word;
+    border-radius: 30px;
+    padding: 15px;
+    border-spacing: 50px;
+    background: AliceBlue;  
+}
+
+td.text_them {
+    text-align: left;
+    word-wrap: break-word;
+    background: Lavender;
+    border-radius: 30px;
+    padding: 15px;
+}
+
+.reply_text_me {
+    border: 2px solid AliceBlue;
+    background: AliceBlue;
+    border-radius: 6px;
+    border-radius: 50px;
+    font-size: 60%
+}
+
+.reply_text_them {
+    border: 2px solid Lavender;
+    background: Lavender;
+    border-radius: 6px;
+    border-radius: 50px;
+    font-size: 60%
+}
+
+td.blank {
+    border: none;
+    width: 50%
+}
+
+.missing {
+    color: red;
+}
+
+.badjoin {
+    color: red;
+}
+
+.imageBox {
+    position: absolute;
+    visibility: hidden;
+    height: 200;
+    border: solid 1px #CCC;
+    padding: 5px;
+}
+
+img {
+    height: 250px;
+    width: auto;
+}
+
+.picboxframe {
+    position: fixed;
+    top: 2%;
+    right: 2%;
+    background: Blue;
+    transition: all .5s ease;
+
+  }
+
+    </style>'''
+        script = '''  <script>
+    function ShowPicture(id,show, img) {
+      if (show=="1") {
+        document.getElementById(id).style.visibility = "visible"
+        document.getElementById(id).childNodes[1].src = img;
+      }
+      else if (show=="0") {
+        document.getElementById(id).style.visibility = "hidden"
+      }
+    }
+
+    function ShowMovie(id, show, movie) {
+        var elem = document.getElementById(id);
+''' \
+                 f'        var htmlstring = "<video controls onMouseOut=\'ShowMovie(\\\"\" + id + "\\\",0)\'> <source src=\'" + movie + "\'> </video>";' \
+                 '''
+        if (show == "1") {
+          {
+            elem.style.visibility = "visible";
+            elem.innerHTML = htmlstring;
+          }
+        } else if (show == "0") {
+          {
+            elem.style.visibility = "hidden";
+            elem.innerHTML =  " "
+          }
+        }
+      }
+  </script>'''
+
+        head_string = '''<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    ''' \
+                      f'    <title> {self._person} </title>\n{css}\n{script}\n</head>'
+        return head_string
