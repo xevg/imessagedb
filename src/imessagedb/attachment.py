@@ -129,12 +129,14 @@ class Attachment:
                 if self.copy:
                     self._destination_filename = f'{self._destination_filename}.mp4'
 
-    def copy_file(self):
-        print(f"Copying {self._destination_filename}")
-        try:
-            shutil.copyfile(self._original_path, self._destination_path)
-            return self._destination_path
-        except:
-            return None
+    def copy_file(self, force=False):
+        # Skip the file copy if the copy already exists
+        if force or not os.path.exists(self._destination_path):
+            print(f"Copied {self._destination_filename}")
+            try:
+                shutil.copyfile(self._original_path, self._destination_path)
+                return self._destination_path
+            except Exception as exp:
+                return
 
 

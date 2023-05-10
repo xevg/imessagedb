@@ -139,13 +139,13 @@ class HTMLOutput:
                 if attachment.missing:
                     attachment_strings = f'{attachments_string} <span class="missing"> Attachment missing </span> '
                     continue
-                if attachment._copy:
+                if attachment.copy:
                     if attachment.conversion_type == 'HEIC':
-                        print(f"Converting {attachment.destination_filename}")
-                        result = convert.convert_heic_image(attachment.original_path, attachment.destination_path)
+                        result = convert.convert_heic_image(attachment.original_path, attachment.destination_path,
+                                                            verbose=True)
                     elif attachment.conversion_type == 'Audio' or attachment.conversion_type == 'Video':
-                        print(f"Converting {attachment.destination_filename}")
-                        convert.convert_audio_video(attachment.original_path, attachment.destination_path)
+                        convert.convert_audio_video(attachment.original_path, attachment.destination_path,
+                                                    verbose=True)
                     else:
                         attachment.copy_file()
 
