@@ -2,7 +2,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = python -msphinx
+SPHINXBUILD   = python -m sphinx # /opt/homebrew/Cellar/sphinx-doc/7.0.0/bin/sphinx-build
 SPHINXPROJ    = imessagedb
 SOURCEDIR     = .
 BUILDDIR      = _build

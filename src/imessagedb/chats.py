@@ -1,4 +1,4 @@
-import iMessageDB
+import imessagedb
 
 
 class Chats:
@@ -17,13 +17,13 @@ class Chats:
         return '\n'.join(string_array)
 
     def get_chats(self):
-        self._database.cursor.execute('select rowid, chat_identifier, display_name from chat')
-        rows = self._database.cursor.fetchall()
+        self._database.connection.execute('select rowid, chat_identifier, display_name from chat')
+        rows = self._database.connection.fetchall()
         for row in rows:
             rowid = row[0]
             chat_identifier = row[1]
             display_name = row[2]
-            new_chat = iMessageDB.Chat(self._database, rowid, chat_identifier, display_name)
+            new_chat = imessagedb.Chat(self._database, rowid, chat_identifier, display_name)
             self.chat_list[new_chat.rowid] = new_chat
             if new_chat.chat_identifier in self.chat_identifiers:
                 self.chat_identifiers[new_chat.chat_identifier].append(new_chat)
@@ -36,13 +36,13 @@ class Chats:
                     "datetime(max(message_date)/1000000000 + strftime('%s', '2001-01-01'),'unixepoch','localtime') " \
                     f"from chat_message_join cmj where chat_id = {i.rowid}"
 
-            self._database.cursor.execute(select_string)
-            rows = self._database.cursor.fetchall()
+            self._database.connection.execute(select_string)
+            rows = self._database.connection.fetchall()
             i.last_message_date = rows[0][0]
 
         # Add the participants for all the chats
-        self._database.cursor.execute('select chat_id, handle_id from chat_handle_join')
-        rows = self._database.cursor.fetchall()
+        self._database.connection.execute('select chat_id, handle_id from chat_handle_join')
+        rows = self._database.connection.fetchall()
         for row in rows:
             chat_id = row[0]
             handle_id = row[1]

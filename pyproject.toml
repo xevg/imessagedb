@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "imessagedb"
-version = "0.1.0"
+version = "0.1.4"
 description = "Reads the Apple iMessage database"
 authors = ["Xev Gittler"]
 license = "MIT"
@@ -8,8 +8,17 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
+alive-progress = "^3.1.2"
+ffmpeg-python = "^0.2.0"
+heic2png = "^1.0.0"
 
 [tool.poetry.dev-dependencies]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.3.1"
+pytest-cov = "^4.0.0"
+jupyter = "^1.0.0"
+myst-nb = {version = "^0.17.2", python = "^3.9"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

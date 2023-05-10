@@ -10,8 +10,15 @@ $ pip install imessagedb
 
 ## Usage
 
-- TODO
+`imessagedb` can be used to parse and view your iMessage messages that are stored 
+in your ~/Library/Messages/chat.db file. 
 
+```python
+import imessagedb
+database = imessagedb.DB()
+```
+
+- TODO - More usage here
 ## Contributing
 
 Interested in contributing? Check out the contributing guidelines. Please note that this project is released with a Code of Conduct. By contributing to this project, you agree to abide by its terms.

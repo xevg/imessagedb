@@ -1,4 +1,4 @@
-import iMessageDB
+import imessagedb
 
 
 class Handles:
@@ -11,13 +11,13 @@ class Handles:
         return
 
     def get_handles(self):
-        self._database.cursor.execute('select rowid, id, service from handle')
-        rows = self._database.cursor.fetchall()
+        self._database.connection.execute('select rowid, id, service from handle')
+        rows = self._database.connection.fetchall()
         for row in rows:
             rowid = row[0]
             number = row[1]
             service = row[2]
-            new_handle = iMessageDB.Handle(self._database, rowid, number, service)
+            new_handle = imessagedb.Handle(self._database, rowid, number, service)
             self._handle_list[new_handle.rowid] = new_handle
             if new_handle.number in self._numbers:
                 self._numbers[new_handle.number].append(new_handle)

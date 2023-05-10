@@ -4,9 +4,11 @@ pushd %~dp0
 
 REM Command file for Sphinx documentation
 
-if "%SPHINXBUILD%" == "" (
-	set SPHINXBUILD=python -msphinx
-)
+REM if "%SPHINXBUILD%" == "" (
+REM	set SPHINXBUILD=python -msphinx
+REM )
+set SPHINXBUILD=/opt/homebrew/Cellar/sphinx-doc/7.0.0/bin/sphinx-build
+
 set SOURCEDIR=.
 set BUILDDIR=_build
 set SPHINXPROJ=imessagedb

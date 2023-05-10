@@ -1,6 +1,6 @@
 import subprocess
 from alive_progress import alive_bar
-import iMessageDB
+import imessagedb
 
 translator_command = "/Users/xev/Dropbox/message_scripts/MessageTranslator/MessageTranslator/MessageTranslator"
 
@@ -33,18 +33,18 @@ class Messages:
                         "order by message.date asc"
         row_count_string = f"select count (*) from message where {where_clause}"
 
-        self._database.cursor.execute(row_count_string)
-        (row_count_total) = self._database.cursor.fetchone()
+        self._database.connection.execute(row_count_string)
+        (row_count_total) = self._database.connection.fetchone()
         row_count_total = row_count_total[0]
 
-        self._database.cursor.execute(select_string)
+        self._database.connection.execute(select_string)
 
         # Start the process to translate attributed strings
         # process = subprocess.Popen([translator_command], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
         #                           stderr=subprocess.PIPE)
 
         messages = []
-        i = self._database.cursor.fetchone()
+        i = self._database.connection.fetchone()
 
         with alive_bar(row_count_total, title="Getting Messages", stats="({rate}, eta: {eta})") as bar:
             message_count = 0
@@ -68,7 +68,7 @@ class Messages:
                                                 stderr=subprocess.PIPE)
                         text = output.stdout.decode('utf-8')
 
-                new_message = iMessageDB.Message(rowid, guid, date, is_from_me, handle_id, attributed_body, text,
+                new_message = imessagedb.Message(rowid, guid, date, is_from_me, handle_id, attributed_body, text,
                                                  reply_to_guid, thread_originator_guid, thread_originator_part,
                                                  chat_id, attachment_list)
                 self._guids[guid] = new_message
@@ -79,7 +79,7 @@ class Messages:
                     self._guids[thread_originator_guid].thread[rowid] = new_message
 
                 bar(skipped=skipped)
-                i = self._database.cursor.fetchone()
+                i = self._database.connection.fetchone()
 
         self._sorted_message_list = sorted(self._message_list.values(), key=lambda x: x.date)
 

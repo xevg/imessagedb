@@ -1,5 +1,5 @@
 import os
-import iMessageDB
+import imessagedb
 from alive_progress import alive_bar
 
 
@@ -15,29 +15,29 @@ class Attachments:
 
         # Get the list of all the attachments
 
-        self._database.cursor.execute('select count(rowid)from attachment')
-        (row_count_total) = self._database.cursor.fetchone()
+        self._database.connection.execute('select count(rowid)from attachment')
+        (row_count_total) = self._database.connection.fetchone()
         row_count_total = row_count_total[0]
 
-        self._database.cursor.execute('select rowid, filename, mime_type from attachment')
+        self._database.connection.execute('select rowid, filename, mime_type from attachment')
 
-        i = self._database.cursor.fetchone()
+        i = self._database.connection.fetchone()
         with alive_bar(row_count_total, title="Getting Attachments", stats="({rate}, eta: {eta})") as bar:
             while i:
                 rowid = i[0]
                 filename = i[1]
                 mime_type = i[2]
                 if filename is not None:
-                    self.attachment_list[rowid] = iMessageDB.Attachment(rowid, filename, mime_type,
+                    self.attachment_list[rowid] = imessagedb.Attachment(rowid, filename, mime_type,
                                                                         copy=self._copy,
                                                                         copy_directory=self._copy_directory)
                 bar()
-                i = self._database.cursor.fetchone()
+                i = self._database.connection.fetchone()
 
         # Get the join of attachments and messages
 
-        self._database.cursor.execute('select message_id, attachment_id from message_attachment_join')
-        i = self._database.cursor.fetchone()
+        self._database.connection.execute('select message_id, attachment_id from message_attachment_join')
+        i = self._database.connection.fetchone()
         while i:
             message_id = i[0]
             attachment_id = i[1]
@@ -45,7 +45,7 @@ class Attachments:
                 self.message_join[message_id].append(attachment_id)
             else:
                 self.message_join[message_id] = [attachment_id]
-            i = self._database.cursor.fetchone()
+            i = self._database.connection.fetchone()
 
         return
 

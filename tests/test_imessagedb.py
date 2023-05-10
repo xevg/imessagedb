@@ -1,1 +1,1 @@
-from imessagedb import imessagedb
+from imessagedb import db

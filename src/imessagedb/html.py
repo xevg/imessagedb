@@ -1,7 +1,7 @@
 from datetime import datetime
 import re
 from alive_progress import alive_bar
-from iMessageDB import convert
+from imessagedb import convert
 
 
 def generate_thread_row(message):

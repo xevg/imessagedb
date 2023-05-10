@@ -1,10 +1,7 @@
-import unittest
+
+import imessagedb
 
 
-class MyTestCase(unittest.TestCase):
-    def test_something(self):
-        self.assertEqual(True, False)  # add assertion here
-
-
-if __name__ == '__main__':
-    unittest.main()
+def test_connection():
+    database = imessagedb.DB("tests/chat.db")
+    assert database
