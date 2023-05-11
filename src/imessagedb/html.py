@@ -1,10 +1,9 @@
 from datetime import datetime
 import re
 from alive_progress import alive_bar
-from imessagedb import convert
 
 
-def generate_thread_row(message):
+def _generate_thread_row(message):
     if message.is_from_me:
         style = 'me'
     else:
@@ -22,37 +21,31 @@ def generate_thread_row(message):
     return row_string
 
 
-def generate_thread_table(message_list, style):
+def _generate_thread_table(message_list, style):
     table_string = f'  <table class="thread_table_{style}">\n'
     for message in message_list:
-        table_string = f'{table_string}{generate_thread_row(message)}'
+        table_string = f'{table_string}{_generate_thread_row(message)}'
     table_string = f'{table_string}  </table>\n<p>\n'
     return table_string
 
 
-def replace_url_to_link(value):
+def _replace_url_to_link(value):
     """ From https://gist.github.com/guillaumepiot/4539986 """
-    
+
     # Replace url to link
-    urls = re.compile(r"((https?):((//)|(\\\\))+[\w\d:#@%/;$()~_?\+-=\\\.&]*)", re.MULTILINE|re.UNICODE)
+    urls = re.compile(r"((https?):((//)|(\\\\))+[\w\d:#@%/;$()~_?\+-=\\\.&]*)", re.MULTILINE | re.UNICODE)
     value = urls.sub(r'<a href="\1" target="_blank">\1</a>', value)
     # Replace email to mailto
-    urls = re.compile(r"([\w\-\.]+@(\w[\w\-]+\.)+[\w\-]+)", re.MULTILINE|re.UNICODE)
+    urls = re.compile(r"([\w\-\.]+@(\w[\w\-]+\.)+[\w\-]+)", re.MULTILINE | re.UNICODE)
     value = urls.sub(r'<a href="mailto:\1">\1</a>', value)
     return value
 
 
-def print_and_save(message, array, output_file):
-    array.append(message)
-    if output_file:
-        print(message, file=output_file)
-
-
 class HTMLOutput:
-    def __init__(self, me, person, numbers, message_list, attachment_list, inline=False, output_file=None):
+    def __init__(self, database, me, person, message_list, attachment_list, inline=False, output_file=None):
+        self._database = database
         self._me = me
         self._person = person
-        self._numbers = numbers
         self._message_list = message_list
         self._attachment_list = attachment_list
         self._inline = inline
@@ -60,23 +53,36 @@ class HTMLOutput:
 
         self._day = 'UNK'
         self._html_array = []
-        print_and_save(self.generate_head(), self._html_array, self._output_file)
-        print_and_save("<body>\n", self._html_array, self._output_file)
-        print_and_save(f"Got {len(self._message_list):,} messages with {self._person} [{self._numbers}]<p>\n",
-                       self._html_array, self._output_file)
-        print_and_save('<div class="picboxframe"  id="picbox"> <img src="" /> </div>',
-                       self._html_array, self._output_file)
+        self._print_and_save(self._generate_head(), self._html_array)
+        self._print_and_save("<body>\n", self._html_array)
+        self._print_and_save(f"Got {len(self._message_list):,} messages with {self._person}<p>\n",
+                             self._html_array)
+        self._print_and_save('<div class="picboxframe"  id="picbox"> <img src="" /> </div>',
+                             self._html_array)
 
-        self._html_array.append(self.generate_table(self._message_list))
-        print_and_save('</body>\n</html>\n',
-                       self._html_array, self._output_file)
+        self._html_array.append(self._generate_table(self._message_list))
+        self._print_and_save('</body>\n</html>\n',
+                             self._html_array)
 
     def __repr__(self):
         return ''.join(self._html_array)
 
-    def generate_table(self, message_list):
+    def save(self):
+        print('\n'.join(self._html_array), file=self._output_file)
+        return
+
+    def print(self):
+        print('\n'.join(self._html_array))
+        return
+
+    def _print_and_save(self, message, array):
+        array.append(message)
+        if self._output_file:
+            print(message, file=self._output_file)
+
+    def _generate_table(self, message_list):
         table_array = []
-        print_and_save('  <table class="main_table">\n', table_array, self._output_file)
+        self._print_and_save('  <table class="main_table">\n', table_array)
 
         previous_day = ''
 
@@ -90,21 +96,21 @@ class HTMLOutput:
                     previous_day = today
 
                     # If it's a new day, end the table, and start a new one
-                    print_and_save('</table>\n  <table class="main_table">\n', table_array, self._output_file)
+                    self._print_and_save('</table>\n  <table class="main_table">\n', table_array)
 
                     self._day = datetime(int(message.date[0:4]), int(message.date[5:7]), int(message.date[8:10]),
                                          int(message.date[11:13]), int(message.date[14:16]),
                                          int(message.date[17:19])).strftime('%a')
-                print_and_save(self.generate_row(message), table_array, self._output_file)
+                self._print_and_save(self._generate_row(message), table_array)
                 if message.attachments:
                     bar()
                 else:
                     bar(skipped=True)
 
-        print_and_save('</table>\n', table_array, self._output_file)
+        self._print_and_save('</table>\n', table_array)
         return ''.join(table_array)
 
-    def generate_row(self, message):
+    def _generate_row(self, message):
         if message.is_from_me:
             who = self._me
             style = 'me'
@@ -123,7 +129,7 @@ class HTMLOutput:
                     if i == message:
                         break
                     print_thread.append(i)
-                thread_table = generate_thread_table(print_thread, style)
+                thread_table = _generate_thread_table(print_thread, style)
 
         attachments_string = ""
         if message.attachments:
@@ -141,11 +147,9 @@ class HTMLOutput:
                     continue
                 if attachment.copy:
                     if attachment.conversion_type == 'HEIC':
-                        result = convert.convert_heic_image(attachment.original_path, attachment.destination_path,
-                                                            verbose=True)
+                        attachment.convert_heic_image(attachment.original_path, attachment.destination_path)
                     elif attachment.conversion_type == 'Audio' or attachment.conversion_type == 'Video':
-                        convert.convert_audio_video(attachment.original_path, attachment.destination_path,
-                                                    verbose=True)
+                        attachment.convert_audio_video(attachment.original_path, attachment.destination_path)
                     else:
                         attachment.copy_file()
 
@@ -153,8 +157,8 @@ class HTMLOutput:
                 if attachment.popup_type == 'Picture':
                     if self._inline:
                         attachment_string = f'<p><a href="{attachment.html_path}" target="_blank">' \
-                            f'<img src="{attachment.html_path}" target="_blank"/><p>' \
-                            f' {attachment.html_path} </a>\n'
+                                            f'<img src="{attachment.html_path}" target="_blank"/><p>' \
+                                            f' {attachment.html_path} </a>\n'
                     else:
                         attachment_string = f'''<a href="{attachment.html_path}" target="_blank"
             onMouseOver="ShowPicture('picbox',1,'{attachment.html_path}')" 
@@ -163,13 +167,13 @@ class HTMLOutput:
                 elif attachment.popup_type == 'Audio':
                     # Not going to do popups for audio, just inline
                     attachment_string = f'<p><audio controls>  <source src="{attachment.html_path}" ' \
-                        f'type="audio/mp3"></audio> <a href="{attachment.html_path}" ' \
-                        f'target="_blank"> {attachment.html_path} </a>\n'
+                                        f'type="audio/mp3"></audio> <a href="{attachment.html_path}" ' \
+                                        f'target="_blank"> {attachment.html_path} </a>\n'
                 elif attachment.popup_type == 'Video':
                     if self._inline:
                         attachment_string = f'<p><video controls>  <source src="{attachment.html_path}" ' \
-                            f' type="video/mp4"></video> <p><a href="{attachment.html_path}"' \
-                            f' target="_blank"> {attachment.html_path} </a>\n'
+                                            f' type="video/mp4"></video> <p><a href="{attachment.html_path}"' \
+                                            f' target="_blank"> {attachment.html_path} </a>\n'
                     else:
                         attachment_string = f'''<a href="{attachment.html_path}" target="_blank"
             onMouseOver="ShowMovie('picbox', 1, '{attachment.html_path}')"> {attachment.html_path} </a>
@@ -181,7 +185,7 @@ class HTMLOutput:
 
                 attachments_string = f'{attachments_string} <p> {attachment_string}'
 
-        text = replace_url_to_link(f'{message.text} {attachments_string}')
+        text = _replace_url_to_link(f'{message.text} {attachments_string}')
         row_string = f'    <tr id={message.rowid}>\n' \
                      f'      <td class="date"> {self._day} {message.date} </td>\n' \
                      f'      <td class="name_{style}"> {who}: </td>\n' \
@@ -189,7 +193,7 @@ class HTMLOutput:
                      f'    </tr>\n'
         return row_string
 
-    def generate_head(self):
+    def _generate_head(self):
         css = '''    <style>
 table {
     width: 100%;

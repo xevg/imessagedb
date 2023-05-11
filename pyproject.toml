@@ -11,6 +11,8 @@ python = "^3.9"
 alive-progress = "^3.1.2"
 ffmpeg-python = "^0.2.0"
 heic2png = "^1.0.0"
+configparser = "^5.3.0"
+termcolor = "^2.3.0"
 
 [tool.poetry.dev-dependencies]
 

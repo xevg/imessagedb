@@ -1,6 +1,6 @@
 import subprocess
 from alive_progress import alive_bar
-import imessagedb
+from imessagedb.message import Message
 
 translator_command = "/Users/xev/Dropbox/message_scripts/MessageTranslator/MessageTranslator/MessageTranslator"
 
@@ -8,7 +8,7 @@ verbose = True
 
 
 class Messages:
-    def __init__(self, database, person, numbers, attachments):
+    def __init__(self, database, person, numbers):
         self._database = database
         self._person = person
         self._numbers = numbers
@@ -54,8 +54,8 @@ class Messages:
                 message_count = message_count + 1
 
                 attachment_list = None
-                if rowid in attachments.message_join:
-                    attachment_list = attachments.message_join[rowid]
+                if rowid in self._database.attachment_list.message_join:
+                    attachment_list = self._database.attachment_list.message_join[rowid]
 
                 skipped = True
                 if text is None:
@@ -68,7 +68,7 @@ class Messages:
                                                 stderr=subprocess.PIPE)
                         text = output.stdout.decode('utf-8')
 
-                new_message = imessagedb.Message(rowid, guid, date, is_from_me, handle_id, attributed_body, text,
+                new_message = Message(rowid, guid, date, is_from_me, handle_id, attributed_body, text,
                                                  reply_to_guid, thread_originator_guid, thread_originator_part,
                                                  chat_id, attachment_list)
                 self._guids[guid] = new_message

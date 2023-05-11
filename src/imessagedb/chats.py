@@ -1,4 +1,4 @@
-import imessagedb
+from imessagedb.chat import Chat
 
 
 class Chats:
@@ -23,7 +23,7 @@ class Chats:
             rowid = row[0]
             chat_identifier = row[1]
             display_name = row[2]
-            new_chat = imessagedb.Chat(self._database, rowid, chat_identifier, display_name)
+            new_chat = Chat(self._database, rowid, chat_identifier, display_name)
             self.chat_list[new_chat.rowid] = new_chat
             if new_chat.chat_identifier in self.chat_identifiers:
                 self.chat_identifiers[new_chat.chat_identifier].append(new_chat)

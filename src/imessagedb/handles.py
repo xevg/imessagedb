@@ -1,4 +1,4 @@
-import imessagedb
+from imessagedb.handle import Handle
 
 
 class Handles:
@@ -17,7 +17,7 @@ class Handles:
             rowid = row[0]
             number = row[1]
             service = row[2]
-            new_handle = imessagedb.Handle(self._database, rowid, number, service)
+            new_handle = Handle(self._database, rowid, number, service)
             self._handle_list[new_handle.rowid] = new_handle
             if new_handle.number in self._numbers:
                 self._numbers[new_handle.number].append(new_handle)

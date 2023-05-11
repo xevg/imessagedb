@@ -1,14 +1,19 @@
-import os
-import imessagedb
+from imessagedb.attachment import Attachment
 from alive_progress import alive_bar
 
 
 class Attachments:
-    def __init__(self, database, copy=False, copy_directory=None, home_directory=os.environ['HOME']):
+    def __init__(self, database, copy=None, copy_directory=None):
         self._database = database
-        self._copy = copy
-        self._copy_directory = copy_directory
-        self._home_directory = home_directory
+        if copy is None:
+            self._copy = self._database.control.getboolean('copy', fallback=False)
+        else:
+            self._copy = copy
+
+        if copy_directory is None:
+            self._copy_directory = self._database.control.get('attachment directory', fallback="/tmp/attachments")
+        else:
+            self._copy_directory = copy_directory
 
         self._attachment_list = {}
         self._message_join = {}
@@ -28,9 +33,9 @@ class Attachments:
                 filename = i[1]
                 mime_type = i[2]
                 if filename is not None:
-                    self.attachment_list[rowid] = imessagedb.Attachment(rowid, filename, mime_type,
-                                                                        copy=self._copy,
-                                                                        copy_directory=self._copy_directory)
+                    self.attachment_list[rowid] = Attachment(self._database, rowid, filename, mime_type,
+                                                             copy=self._copy,
+                                                             copy_directory=self._copy_directory)
                 bar()
                 i = self._database.connection.fetchone()
 
