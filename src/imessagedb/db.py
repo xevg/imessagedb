@@ -1,52 +1,20 @@
 import sqlite3
 import os
 import configparser
+
+import imessagedb
 from imessagedb.attachments import Attachments
 from imessagedb.messages import Messages
+from imessagedb.message import Message
 from imessagedb.chats import Chats
 from imessagedb.handles import Handles
 from imessagedb.html import HTMLOutput
 from imessagedb.text import TextOutput
 
 
-def _get_default_configuration():
-    """Generates a default configuration if one is not passed in
-
-    """
-
-    config = configparser.ConfigParser()
-    config['DISPLAY'] = {
-        'me_background_color': 'AliceBlue',
-        'them_background_color': 'Lavender',
-        'me_name': 'Blue',
-        'them_name': 'Purple',
-        'thread_background': 'HoneyDew',
-        'me_thread': 'AliceBlue',
-        'them_thread': 'Lavender',
-    }
-
-    return config
-
-
 class DB:
     """
     A class to connect to an iMessage database
-
-    ...
-
-    Attributes
-    ---------
-    handles : imessagedb.Handles
-        A class that contains all the handles in the database
-    chats : imessagedb.Chats
-        A class that contains all the chats in the database
-    connection : sqlite3.Cursor
-        Used for reading directly from the database
-
-    Methods
-    ------
-    disconnect()
-        Disconnects from the database
 
     """
     def __init__(self, database_name=f"{os.environ['HOME']}/Library/Messages/chat.db", config=None):
@@ -57,14 +25,15 @@ class DB:
             The database that it connects to (the default is to use the default database in the caller's home directory)
 
         config : ConfigParser
-            Configuration information
+            Configuration information. If none is provided, we will create a default.
         """
 
         self._database_name = database_name
         self._configuration = config
 
         if self._configuration is None:
-            self._configuration = _get_default_configuration()
+            self._configuration = configparser.ConfigParser()
+            self._configuration.read_string(imessagedb.DEFAULT_CONFIGURATION)
 
         self._control = self._configuration['CONTROL']
 
@@ -77,22 +46,22 @@ class DB:
         self._attachment_list = Attachments(self)
         return
 
-    def Messages(self, person, numbers):
+    def Messages(self, person: str, numbers: list) -> Messages:
         """A wrapper to create a Messages class
         """
         return Messages(self, person, numbers)
 
-    def HTMLOutput(self, me, person, message_list, attachment_list, inline=False, output_file=None):
+    def HTMLOutput(self, me: str, person: str, message_list: Messages, inline=False, output_file=None) -> HTMLOutput:
         """A wrapper to create an HTMLOutput class
         """
-        return HTMLOutput(self, me, person, message_list, attachment_list, inline, output_file)
+        return HTMLOutput(self, me, person, message_list, inline, output_file)
 
-    def TextOutput(self, me, person, message_list, attachment_list, output_file=None):
+    def TextOutput(self, me: str, person: str, message_list: Messages, output_file=None) -> TextOutput:
         """A wrapper to create a TextOutput class
         """
         return TextOutput(self, me, person, message_list, output_file)
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Disconnects from the database
 
         """
@@ -100,27 +69,31 @@ class DB:
         return
 
     @property
-    def connection(self):
+    def connection(self) -> sqlite3.Cursor:
+        """Returns a connection to query the database
+        """
         return self._cursor
 
     @property
-    def handles(self):
+    def handles(self) -> Handles:
+        """Returns an imessagedb.Handles class with all the handles
+        """
         return self._handles
 
     @property
-    def chats(self):
+    def chats(self) -> Chats:
         """Returns an imessagedb.Chats class with all the chats
         """
         return self._chats
 
     @property
-    def attachment_list(self):
+    def attachment_list(self) -> Attachments:
         """Returns an imessagedb.Attachments class with all the attachments
         """
         return self._attachment_list
 
     @property
-    def config(self):
+    def config(self) -> configparser.ConfigParser:
         """Returns the configuration object
         """
         return self._configuration

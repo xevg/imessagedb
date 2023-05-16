@@ -1,13 +1,62 @@
+import plistlib
+import datetime
+
+from . import attachments
+import imessagedb
+
+
+def _date_from_webkit(webkit_timestamp: float) -> datetime.datetime:
+    # From https://www.epochconverter.com/webkit
+    epoch_start = datetime.datetime(1601,1,1)
+    delta = datetime.timedelta(microseconds=int(webkit_timestamp*1000000))
+    return epoch_start + delta
+
+
+def _convert_attributed_body(encoded: bytes) -> str:
+    # This general logic was copied from
+    # https://github.com/my-other-github-account/imessage_tools/blob/master/imessage_tools.py, however
+    # I needed to make some improvements
+
+    text = encoded.split(b'NSNumber')[0]
+    text = text.split(b'NSString')[1]
+    text = text.split(b'NSDictionary')[0]
+    text = text[6:-12]
+    if b'\x01' in text:
+        text = text.split(b'\x01')[1]
+    if b'\x00' in text:
+        text = text.split(b'\x00')[1]
+    if b'\x86' in text:
+        text = text.split(b'\x86')[0]
+    return text.decode('utf-8', errors='replace')
+
+
 class Message:
-    def __init__(self, rowid, guid, date, is_from_me, handle_id, attributed_body, text,
+    """ Class for holding information about a message """
+
+    def __init__(self, database, rowid, guid, date, is_from_me, handle_id, attributed_body, message_summary_info, text,
                  reply_to_guid, thread_originator_guid, thread_originator_part, chat_id, attachments):
+        """
+                Parameters
+                ----------
+                database : imessagedb.DB
+                    An instance of a connected database
+
+                rowid, guid, date, is_from_me, handle_id, attributed_body, message_summary_info, text,
+                 reply_to_guid, thread_originator_guid, thread_originator_part, chat_id : str
+                    The parameters are the fields in the database
+
+                attachments : list
+                    The attachments for this message"""
+
         self._rowid = rowid
         self._guid = guid
         self._date = date
         self._is_from_me = is_from_me
         self._handle_id = handle_id
         self._attributed_body = attributed_body
+        self._message_summary_info = message_summary_info
         self._text = text
+        self._attributed_body = attributed_body
         self._reply_to_guid = reply_to_guid
         self._thread_originator_guid = thread_originator_guid
         self._thread_originator_part = thread_originator_part
@@ -15,7 +64,26 @@ class Message:
         self._attachments = attachments
         self._thread = {}
 
-    def __repr__(self):
+
+        # There are a lot of messages that are saved into attributed_body instead of the text field.
+        #  There isn't a good way to convert this in Python that I've found, so I have to run a
+        #  program to do it. I need to fix this.
+
+        if (self._text is None or text == '' or text == ' ') and self._attributed_body is not None:
+            self._text = _convert_attributed_body(self._attributed_body)
+
+        # Edits are stored in message_summary_info
+        try:
+            plist = plistlib.loads(self._message_summary_info)
+            if 'ec' in plist:
+                self._edits = []
+                for row in plist['ec']['0']:
+                    self._edits.append(_convert_attributed_body(row['t']))
+                    # row['d'] = _date_from_webkit(row['d'])
+        except plistlib.InvalidFileException as exp:
+            pass
+
+    def __repr__(self) -> str:
         return_string = f'RowID: {self._rowid}' \
                         f' GUID: {self._guid}' \
                         f' Date: {self._date}' \
@@ -30,49 +98,57 @@ class Message:
         return str(return_string)
 
     @property
-    def rowid(self):
+    def rowid(self) -> str:
         return self._rowid
 
     @property
-    def guid(self):
-       return self._guid
+    def guid(self) -> str:
+        return self._guid
 
     @property
-    def date(self):
+    def date(self) -> datetime.datetime:
         return self._date
 
     @property
-    def is_from_me(self):
+    def is_from_me(self) -> bool:
         return self._is_from_me
 
     @property
-    def handle_id(self):
+    def handle_id(self) -> str:
         return self._handle_id
 
     @property
-    def attributed_body(self):
+    def attributed_body(self) -> bytes:
         return self._attributed_body
 
     @property
-    def text(self):
+    def message_summary_info(self) -> bytes:
+        return self._message_summary_info
+
+    @property
+    def text(self) -> str:
         return self._text
 
     @property
-    def reply_to_guid(self):
+    def edits(self) -> list:
+        return self._edits
+
+    @property
+    def reply_to_guid(self) -> str:
         return self._reply_to_guid
 
     @property
-    def thread_originator_guid(self):
+    def thread_originator_guid(self) -> str:
         return self._thread_originator_guid
 
     @property
-    def chat_id(self):
+    def chat_id(self) -> str:
         return self._chat_id
 
     @property
-    def attachments(self):
+    def attachments(self) -> attachments.Attachments:
         return self._attachments
 
     @property
-    def thread(self):
+    def thread(self) -> dict:
         return self._thread

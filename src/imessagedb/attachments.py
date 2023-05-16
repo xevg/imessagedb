@@ -3,7 +3,21 @@ from alive_progress import alive_bar
 
 
 class Attachments:
-    def __init__(self, database, copy=None, copy_directory=None):
+    """ All attachments """
+    def __init__(self, database, copy=None, copy_directory=None) -> None:
+        """
+            Parameters
+            ----------
+            database : imessagedb.DB
+                An instance of a connected database
+
+            copy : bool
+                Whether or not to copy attachments, default is to use the configuration parameter
+
+            copy_directory : str
+                The directory to copy attachments into
+        """
+
         self._database = database
         if copy is None:
             self._copy = self._database.control.getboolean('copy', fallback=False)
@@ -55,15 +69,17 @@ class Attachments:
         return
 
     @property
-    def attachment_list(self):
+    def attachment_list(self) -> dict:
+        """ Return the list of all attachments """
         return self._attachment_list
 
     @property
-    def message_join(self):
+    def message_join(self) -> dict:
+        """ Return the mapping of messages to attachments """
         return self._message_join
 
     def __iter__(self):
         return self.attachment_list.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.attachment_list.keys())

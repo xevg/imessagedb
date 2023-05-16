@@ -2,21 +2,29 @@ from imessagedb.chat import Chat
 
 
 class Chats:
-    def __init__(self, database):
+    """ All handles in the database """
+
+    def __init__(self, database) -> None:
+        """
+            Parameters
+            ----------
+            database : imessagedb.DB
+                An instance of a connected database"""
+
         self._database = database
         self._chat_list = {}
         self._chat_identifiers = {}
 
-        self.get_chats()
+        self._get_chats()
         return
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         string_array = []
         for i in sorted(self.chat_list):
             string_array.append(str(self.chat_list[i]))
         return '\n'.join(string_array)
 
-    def get_chats(self):
+    def _get_chats(self):
         self._database.connection.execute('select rowid, chat_identifier, display_name from chat')
         rows = self._database.connection.fetchall()
         for row in rows:
@@ -52,9 +60,11 @@ class Chats:
         return
 
     @property
-    def chat_list(self):
+    def chat_list(self) -> dict:
+        """ Return the list of chats by rowid in a dict"""
         return self._chat_list
 
     @property
-    def chat_identifiers(self):
+    def chat_identifiers(self) -> dict:
+        """ Return the list of chats by chat identifier in a dict"""
         return self._chat_identifiers

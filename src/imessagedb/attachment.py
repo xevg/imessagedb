@@ -7,8 +7,29 @@ import heic2png
 
 
 class Attachment:
-    def __init__(self, database, rowid, filename, mime_type, copy=False, copy_directory=None,
-                 home_directory=os.environ['HOME']):
+    """ Class for holding information about an attachment """
+    def __init__(self, database, rowid: str, filename: str, mime_type: str,
+                 copy=False, copy_directory=None, home_directory=os.environ['HOME']) -> None:
+        """
+                        Parameters
+                        ----------
+                        database : imessagedb.DB
+                            An instance of a connected database
+
+                        rowid, filename, mime_type : str
+                            Fields from the database
+
+                        copy : bool
+                            Whether or not to copy the attachment, default is False
+
+                        copy_directory : str
+                            The directory to copy the attachment to, default is none
+
+                        home_directory : str
+                            Needed to know where to get the attachments from. The attachments in the database
+                            are listed under ~/Library/Messages/Attachments, so need to be able to translate that
+
+                        """
         self._database = database
         self._rowid = rowid
         self._filename = filename
@@ -40,7 +61,7 @@ class Attachment:
             penultimate = parts.pop()
             self._destination_filename = f'{penultimate}-{last}'
 
-        self.process_mime_type()  # We may need to do a conversion and therefore change the filename
+        self._process_mime_type()  # We may need to do a conversion and therefore change the filename
         if self._copy:
             self._destination_path = f'{self._copy_directory}/{self._destination_filename}'
             if len(self._destination_path) > 200: # Some filenames are too long
@@ -52,64 +73,78 @@ class Attachment:
         return
 
     @property
-    def rowid(self):
+    def rowid(self) -> str:
+        """ Return the rowid """
         return self._rowid
 
     @property
-    def filename(self):
+    def filename(self) -> str:
+        """ Return the filename of the attachment """
         return self._filename
 
     @property
-    def mime_type(self):
+    def mime_type(self) -> str:
+        """ Return the mime_type of the attachment"""
         return self._mime_type
 
     @property
-    def copy(self):
+    def copy(self) -> bool:
+        """ Return if the attachment should be copied """
         return self._copy
 
     @property
-    def destination_path(self):
+    def destination_path(self) -> str:
+        """ Return the destination path the attachment will be copied to """
         return self._destination_path
 
     @property
-    def popup_type(self):
+    def popup_type(self) -> str:
+        """ Return the popup type, one of [Audio, Video, Picture] """
         return self._popup_type
 
     @property
-    def conversion_type(self):
+    def conversion_type(self) -> str:
+        """ Return the conversion type, one of [Audio, HEIC, Video] """
         return self._conversion_type
 
     @property
-    def skip(self):
+    def skip(self) -> bool:
+        """ Return if we need to skip this attachment """
         return self._skip
 
     @property
-    def missing(self):
+    def missing(self) -> bool:
+        """ Return if the attachment is missing """
         return self._missing
 
     @property
-    def original_path(self):
+    def original_path(self) -> str:
+        """ Return the original path of the attachment """
         return self._original_path
 
     @property
-    def destination_filename(self):
+    def destination_filename(self) -> str:
+        """ Return the filename at the destination (not the whole path)"""
         return self._destination_filename
 
     @property
-    def html_path(self):
+    def html_path(self) -> str:
+        """ Return the html escaped path """
         return urllib.parse.quote(self.destination_path)
 
     @property
-    def link_path(self):
+    def link_path(self) -> str:
+        """ Return a link to the attachment """
         return f"file://{urllib.parse.quote(self.destination_path)}"
 
-    def process_mime_type(self):
+    def _process_mime_type(self) -> None:
+        """ Based on the mime_type, decide how to convert the file if necessary and how to rename it """
         if self._mime_type is None:
             # The only type of file that doesn't have a mime type that I am currently interested in are audio files
             search_name = re.search(".caf$", self._filename)
             if search_name:
                 self._popup_type = "Audio"
-                self._conversion_type = "AV"
+                self._conversion_type = "Audio"
                 if self.copy:
                     self._destination_filename = f'{self._destination_filename}.mp3'
             else:
@@ -137,13 +172,14 @@ class Attachment:
                 if self.copy:
                     self._destination_filename = f'{self._destination_filename}.mp4'
 
-    def copy_file(self):
+    def copy_attachment(self) -> None:
+        """ Copy the attachment """
         # Skip the file copy if the copy already exists
         if self._force or not os.path.exists(self._destination_path):
             print(f"Copying {self._destination_filename}")
             try:
                 shutil.copyfile(self._original_path, self._destination_path)
-                return self._destination_path
+                return
             except Exception as exp:
                 print(f"Failed to copy {self._destination_filename}: {exp}")
                 return
@@ -152,6 +188,7 @@ class Attachment:
             return
 
     def convert_heic_image(self, heic_location, png_location) -> None:
+        """ Convert a HEIC image to a PNG so it can be viewed in the browser """
         # Don't do the expensive conversion if we've already converted it
         if self._force or not os.path.exists(png_location):
             try:
@@ -167,6 +204,7 @@ class Attachment:
             return
 
     def convert_audio_video(self, original, converted) -> None:
+        """ Convert an audio or video file from an undisplayable source to something the browser can display"""
         if self._force or not os.path.exists(converted):
             try:
                 print(f"Converting {os.path.basename(converted)}")
@@ -181,5 +219,3 @@ class Attachment:
         else:
             # If the file exists already, don't convert it
             return
-
-

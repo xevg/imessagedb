@@ -42,12 +42,76 @@ def _replace_url_to_link(value):
 
 
 class HTMLOutput:
-    def __init__(self, database, me, person, message_list, attachment_list, inline=False, output_file=None):
+    """ Creates an HTML file (or string) from a Messages list
+
+    ...
+
+    There are a number of options in the configuration file that affect how the HTML is created.
+    In the CONTROL section, the following impact the output:
+
+    copy = True :
+                If the attachments are not copied, they are not available on the HTML output.
+                There are two reasons for that. 1) The web browser does not have access to the directory
+                that the attachments are stored, so it cannot display them 2) Some of the attachments need
+                to be converted in order to be viewed in the browser, and need a place to live.
+
+    skip attachments = False :
+                If true, attachments will not be available in the HTML output
+
+    In the DISPLAY section, the following impact the output:
+
+    inline attachments = False :
+                If inline attachments are true, then the images will be part of the HTML. If
+                it is false, then there will be a popup when you hover over the attachment text that will show
+                the attachment on demand. This will make the load much faster and the output far less cluttered.
+
+    me = Me :
+                The name to put for your part of the conversation. It defaults to 'Me'.
+
+    me html background color = AliceBlue
+    them html background color = Lavender :
+                The background color of the text messages for you and for the other person.
+                The options for colors can be found here: https://www.w3schools.com/cssref/css_colors.php
+
+
+    thread background = HoneyDew
+    me thread background = AliceBlue
+    them thread background = Lavender :
+                The background color of the thread in replies
+
+    me html name color = Blue
+    them html name color = Purple :
+                The color of the name
+
+    """
+    def __init__(self, database, me: str, person: str, message_list,
+                 inline=False, output_file=None) -> None:
+        """
+            Parameters
+            ----------
+            database : imessagedb.DB
+                An instance of a connected database
+
+            me : str
+                Your display name
+
+            person : str
+                The name of the person in the conversation
+
+            message_list: imessagedb.DB.Messages
+                 The messages
+
+            inline : bool
+                Display attachments inline or not
+
+            output_filename : str
+                The name of the output file"""
+
         self._database = database
         self._me = me
         self._person = person
         self._message_list = message_list
-        self._attachment_list = attachment_list
+        self._attachment_list = self._database.attachment_list
         self._inline = inline
         self._output_file = output_file
 
@@ -64,23 +128,26 @@ class HTMLOutput:
         self._print_and_save('</body>\n</html>\n',
                              self._html_array)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return ''.join(self._html_array)
 
-    def save(self):
+    def save(self) -> None:
+        """ Write the output to the output file"""
         print('\n'.join(self._html_array), file=self._output_file)
         return
 
-    def print(self):
+    def print(self) -> None:
+        """ Print the output to stdout """
         print('\n'.join(self._html_array))
         return
 
-    def _print_and_save(self, message, array):
+    def _print_and_save(self, message: str, array: list) -> None:
+        """ Save to the output file while it is processing """
         array.append(message)
         if self._output_file:
             print(message, file=self._output_file)
 
-    def _generate_table(self, message_list):
+    def _generate_table(self, message_list) -> str:
         table_array = []
         self._print_and_save('  <table class="main_table">\n', table_array)
 
@@ -110,13 +177,15 @@ class HTMLOutput:
         self._print_and_save('</table>\n', table_array)
         return ''.join(table_array)
 
-    def _generate_row(self, message):
+    def _generate_row(self, message) -> str:
         if message.is_from_me:
             who = self._me
             style = 'me'
         else:
             who = self._person
             style = 'them'
+
+        floating = self._database.config['DISPLAY']['popup location'] == 'floating'
 
         thread_table = ""
         if message.thread_originator_guid:
@@ -151,9 +220,15 @@ class HTMLOutput:
                     elif attachment.conversion_type == 'Audio' or attachment.conversion_type == 'Video':
                         attachment.convert_audio_video(attachment.original_path, attachment.destination_path)
                     else:
-                        attachment.copy_file()
+                        attachment.copy_attachment()
 
-                attachment_id = f'attachment_{attachment.rowid}'
+                if floating:
+                    box_name = f'PopUp{attachment.rowid}'
+                    image_box = f'<div class="imageBox" id="PopUp{attachment.rowid}">  <img src="" /> </div>'
+                else:
+                    box_name = 'picbox'
+                    image_box = ''
+
                 if attachment.popup_type == 'Picture':
                     if self._inline:
                         attachment_string = f'<p><a href="{attachment.html_path}" target="_blank">' \
@@ -161,8 +236,8 @@ class HTMLOutput:
                                             f' {attachment.html_path} </a>\n'
                     else:
                         attachment_string = f'''<a href="{attachment.html_path}" target="_blank"
-            onMouseOver="ShowPicture('picbox',1,'{attachment.html_path}')" 
-            onMouseOut="ShowPicture('picbox',0)"> {attachment.html_path} </a>
+            onMouseOver="ShowPicture('{box_name}',1,'{attachment.html_path}')" 
+            onMouseOut="ShowPicture('{box_name}',0)"> {attachment.html_path} </a>
 '''
                 elif attachment.popup_type == 'Audio':
                     # Not going to do popups for audio, just inline
@@ -176,14 +251,14 @@ class HTMLOutput:
                                             f' target="_blank"> {attachment.html_path} </a>\n'
                     else:
                         attachment_string = f'''<a href="{attachment.html_path}" target="_blank"
-            onMouseOver="ShowMovie('picbox', 1, '{attachment.html_path}')"> {attachment.html_path} </a>
+            onMouseOver="ShowMovie('{box_name}', 1, '{attachment.html_path}')"> {attachment.html_path} </a>
 '''
 
                 else:
                     attachment_string = f'<a href="{attachment.html_path}" target="_blank"> ' \
                                         f'{attachment.html_path} </a>\n'
 
-                attachments_string = f'{attachments_string} <p> {attachment_string}'
+                attachments_string = f'{attachments_string} <p> {attachment_string} {image_box} '
 
         text = _replace_url_to_link(f'{message.text} {attachments_string}')
         row_string = f'    <tr id={message.rowid}>\n' \
@@ -193,7 +268,12 @@ class HTMLOutput:
                      f'    </tr>\n'
         return row_string
 
-    def _generate_head(self):
+    def _generate_head(self) -> str:
+        if self._database.config['DISPLAY']['popup location'] == 'upper right':
+            popup_location = 'right'
+        else:
+            popup_location = 'left'
+
         css = '''    <style>
 table {
     width: 100%;
@@ -318,7 +398,8 @@ img {
 .picboxframe {
     position: fixed;
     top: 2%;
-    right: 2%;
+    ''' + f'{popup_location}: 2%' \
+              '''
     background: Blue;
     transition: all .5s ease;
 
@@ -339,8 +420,9 @@ img {
     function ShowMovie(id, show, movie) {
         var elem = document.getElementById(id);
 ''' \
-                 f'        var htmlstring = "<video controls onMouseOut=\'ShowMovie(\\\"\" + id + "\\\",0)\'> <source src=\'" + movie + "\'> </video>";' \
-                 '''
+                 f'        var htmlstring = "<video controls onMouseOut=\'ShowMovie(\\\"\" + id + "\\\",0)\'> ' \
+                 f'<source src=\'" + movie + "\'> </video>";' \
+'''
         if (show == "1") {
           {
             elem.style.visibility = "visible";

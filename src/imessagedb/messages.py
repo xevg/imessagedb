@@ -1,14 +1,27 @@
 import subprocess
+import os
 from alive_progress import alive_bar
 from imessagedb.message import Message
 
-translator_command = "/Users/xev/Dropbox/message_scripts/MessageTranslator/MessageTranslator/MessageTranslator"
-
-verbose = True
+# The location of the translator binary is the same as this file is located.
 
 
 class Messages:
-    def __init__(self, database, person, numbers):
+    """ All messages in a conversation or conversations with a particular person """
+    def __init__(self, database, person: str, numbers: list) -> None:
+        """
+                Parameters
+                ----------
+                database : imessagedb.DB
+                    An instance of a connected database
+
+                person : str
+                    The name of the person in the conversation
+
+                numbers: list
+                    A list of numbers associated with the person, as represented in the handle data table
+
+                """
         self._database = database
         self._person = person
         self._numbers = numbers
@@ -17,16 +30,16 @@ class Messages:
 
         numbers_string = "','".join(self._numbers)
         where_clause = "rowid in (" \
-            " select message_id from chat_message_join where chat_id in (" \
-            "  select chat_id from chat_handle_join where handle_id in (" \
-            f"   select rowid from handle where id in ('{numbers_string}')" \
-            "  )" \
-            " )" \
-            ")"
+                       " select message_id from chat_message_join where chat_id in (" \
+                       "  select chat_id from chat_handle_join where handle_id in (" \
+                       f"   select rowid from handle where id in ('{numbers_string}')" \
+                       "  )" \
+                       " )" \
+                       ")"
         select_string = "select message.rowid, guid, " \
                         "datetime(message.date/1000000000 + strftime('%s', '2001-01-01'),'unixepoch','localtime'), " \
                         "message.is_from_me, message.handle_id, " \
-                        " hex(message.attributedBody), message.text, " \
+                        " message.attributedBody, message.message_summary_info, message.text, " \
                         "reply_to_guid, thread_originator_guid, thread_originator_part, cmj.chat_id  " \
                         "from message, chat_message_join cmj " \
                         f"where message.rowid = cmj.message_id and {where_clause} " \
@@ -39,17 +52,18 @@ class Messages:
 
         self._database.connection.execute(select_string)
 
-        # Start the process to translate attributed strings
-        # process = subprocess.Popen([translator_command], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-        #                           stderr=subprocess.PIPE)
+        # At some point Apple switched from using the text field to also using the attributed string field.
+        #  This field is not easily readable, so there is an Objective-C program that does the translation.
+        #  This will be called for each message that has that field.
+        translate = subprocess.Popen([translator_command], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE, text=True)
 
-        messages = []
         i = self._database.connection.fetchone()
 
         with alive_bar(row_count_total, title="Getting Messages", stats="({rate}, eta: {eta})") as bar:
             message_count = 0
             while i:
-                (rowid, guid, date, is_from_me, handle_id, attributed_body, text,
+                (rowid, guid, date, is_from_me, handle_id, attributed_body, message_summary_info, text,
                  reply_to_guid, thread_originator_guid, thread_originator_part, chat_id) = i
                 message_count = message_count + 1
 
@@ -58,19 +72,10 @@ class Messages:
                     attachment_list = self._database.attachment_list.message_join[rowid]
 
                 skipped = True
-                if text is None:
-                    # There are a lot of messages that are saved into attributed_body instead of the text field.
-                    #  There isn't a good way to convert this in Python that I've found, so I have to run a
-                    #  program to do it. I need to fix this.
-                    if attributed_body is not None and attributed_body != '':
-                        skipped = False
-                        output = subprocess.run([translator_command, attributed_body], stdout=subprocess.PIPE,
-                                                stderr=subprocess.PIPE)
-                        text = output.stdout.decode('utf-8')
 
-                new_message = Message(rowid, guid, date, is_from_me, handle_id, attributed_body, text,
-                                                 reply_to_guid, thread_originator_guid, thread_originator_part,
-                                                 chat_id, attachment_list)
+                new_message = Message(self._database, rowid, guid, date, is_from_me, handle_id, attributed_body,
+                                      message_summary_info, text, reply_to_guid, thread_originator_guid,
+                                      thread_originator_part, chat_id, attachment_list)
                 self._guids[guid] = new_message
                 self._message_list[rowid] = new_message
 
@@ -84,16 +89,16 @@ class Messages:
         self._sorted_message_list = sorted(self._message_list.values(), key=lambda x: x.date)
 
     @property
-    def message_list(self):
-        # Return a list sorted by the date of the message
+    def message_list(self) -> list:
+        """ Returns a list of messages sorted by the date of the message"""
         return self._sorted_message_list
 
     @property
-    def guids(self):
+    def guids(self) -> dict:
         return self._guids
 
     def __iter__(self):
         return self._sorted_message_list.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self._sorted_message_list)

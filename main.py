@@ -1,16 +1,13 @@
 # This is a sample Python script.
 
-import getopt
+import argparse
 import logging
 import configparser
 import os
 import sys
-from datetime import datetime
-from termcolor import colored
+
 
 import imessagedb
-
-translator_command = "/Users/xev/Dropbox/message_scripts/MessageTranslator/MessageTranslator/MessageTranslator"
 
 
 def create_default_config(file_name):
@@ -54,8 +51,7 @@ def get_contacts(configuration):
 
 if __name__ == '__main__':
 
-    HOME_DIR = os.environ['HOME']
-    config_file = f'{HOME_DIR}/.config/iMessageDB.ini'
+    config_file = f'{os.environ["HOME"]}/.config/iMessageDB.ini'
     create = False
     verbose = True
     debug = False
@@ -68,79 +64,73 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO, format='%(asctime)s <%(name)s> %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger('main')
     logger.info("Processing parameters")
-    options, remainder = getopt.getopt(sys.argv[1:], 'ao:n:tvic', ['output_directory=',
-                                                                   'verbose',
-                                                                   'debug',
-                                                                   'name=',
-                                                                   'notable',
-                                                                   'nocopy',
-                                                                   'inline',
-                                                                   'noattachment',
-                                                                   'config'
-                                                                   ])
+
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument("--name", help="Person to get conversations about", required=True)
+    argument_parser.add_argument("-c", "--configfile", help="Location of the configuration file",
+                                 default=f'{os.environ["HOME"]}/.config/iMessageDB.ini')
+    argument_parser.add_argument("-o", "--output_directory",
+                                 help="The output directory where the output and attachments go")
+    argument_parser.add_argument("--database", help="The database file to open",
+                                 default=f"{os.environ['HOME']}/Library/Messages/chat.db")
+    argument_parser.add_argument("-m", "--me", help="The name to use to refer to you", default="Me")
+    argument_parser.add_argument("-t", "--output_type", help="The type of output", choices=["text", "html"])
+    argument_parser.add_argument("-i", "--inline", help="Show the attachments inline", action="store_true")
+    mutex_group = argument_parser.add_mutually_exclusive_group()
+    mutex_group.add_argument("-f", "--force", help="Force a copy of the attachments", action="store_true")
+    mutex_group.add_argument("--no_copy", help="Don't copy the attachments", action="store_true")
+    argument_parser.add_argument("--no_attachments", help="Don't process attachments at all", action="store_true")
+    argument_parser.add_argument("-v", "--verbose", help="Turn on additional output", action="store_true")
+
+
+    args = argument_parser.parse_args()
+
+    # First read in the configuration file, creating it if need be, then overwrite the values from the command line
+    if not os.path.exists(args.configfile):
+        imessagedb._create_default_configuration(args.configfile)
+    config = configparser.ConfigParser()
+    config.read(args.configfile)
+
+    CONTROL = 'CONTROL'
+    DISPLAY = 'DISPLAY'
+
+    config.set(CONTROL, 'Person', args.name)
+    config.set(CONTROL, 'verbose', str(args.verbose))
+    if args.output_directory:
+        config.set(CONTROL, 'copy directory', args.output_directory)
+    if args.no_copy:
+        config.set(CONTROL, 'copy', 'False')
+    if args.output_type:
+        config.set(CONTROL, 'output type', args.output_type)
+    if args.force:
+        config.set(CONTROL, 'force copy', 'True')
+    if args.no_attachments:
+        config.set(CONTROL, 'skip attachments', 'True')
+    if args.inline:
+        config.set(DISPLAY, 'inline attachments', 'True')
+
     out = sys.stdout
-    Person = None
-
-    for opt, arg in options:
-        if opt in ('-o', '--output_directory'):
-            output_directory = arg
-            create = True
-        elif opt in ('-v', '--verbose'):
-            verbose = True
-        elif opt in ('-d', '--debug'):
-            debug = True
-        elif opt in ('-n', '--name'):
-            Person = arg
-        elif opt in ('-t', '--notable'):
-            no_table = True
-        elif opt in ('-i', '--inline'):
-            inline = True
-        elif opt in ('c', '--nocopy'):
-            no_copy = True
-        elif opt in ('a', '--noattachment'):
-            no_attachment = True
-        elif opt in '--config':
-            config_file = arg
-
-    logger.debug(f'OPTIONS   : {options}')
-    if not os.path.exists(config_file):
-        config = create_default_config(config_file)
-    else:
-        config = configparser.ConfigParser()
-        config.read(config_file)
-
-    preface = ''
 
     contacts = get_contacts(config)
-
-    if not Person:
-        logger.error('You have to specify who you want to search')
-        Usage()
-
+    Person = config[CONTROL]['Person']
     if Person.lower() not in contacts.keys():
         logger.error(f"{Person} not known. Please edit contacts list.")
         Usage()
 
-    output_directory = output_directory
-    config['CONTROL']['attachment directory'] = f"{output_directory}/{Person}_attachments"
+    config[CONTROL]['attachment directory'] = f"{config[CONTROL]['copy directory']}/{Person}_attachments"
 
-    if create:
-        logger.info("Preparing output locations")
-        filename = f'{Person}.html'
-        out = open(f'{output_directory}/{filename}', 'w')
-        attachments_path_stripped = f"{Person}_attachments"
-        try:
-            os.mkdir(config['CONTROL']['attachment directory'])
-        except FileExistsError:
-            pass
+    filename = f'{Person}.html'
+    out = open(f"{config[CONTROL]['copy directory']}/{filename}", 'w')
+    try:
+        os.mkdir(config['CONTROL']['attachment directory'])
+    except FileExistsError:
+        pass
 
-    database = imessagedb.DB(f"{HOME_DIR}/Library/Messages/chat.db", config=config)
+    database = imessagedb.DB(args.database, config=config)
     message_list = database.Messages(Person, contacts[Person.lower()])
 
-    logger.info("Outputting messages ...")
-    database.TextOutput('Xev', Person, message_list, database.attachment_list, output_file=out).print()
-    # print(text_string)
-    html_string = database.HTMLOutput('Xev', Person, message_list, database.attachment_list, output_file=out)
+    # database.TextOutput(args.me, Person, message_list, output_file=out).print()
+    html_string = database.HTMLOutput(args.me, Person, message_list, output_file=out)
 
     print("The end")
     database.disconnect()

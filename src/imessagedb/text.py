@@ -1,8 +1,9 @@
 from termcolor import colored
 from datetime import datetime
+import imessagedb
 
 
-def _print_thread(thread_header, current_message):
+def _print_thread(thread_header, current_message: str) -> str:
     thread_string = ""
     thread_list = thread_header.thread
     thread_list[thread_header.rowid] = thread_header
@@ -17,7 +18,29 @@ def _print_thread(thread_header, current_message):
 
 
 class TextOutput:
-    def __init__(self, database, me, person, messages, output_file=None):
+    """ Creates a text file (or string) from a Messages list
+
+        ...
+
+        There are a number of options in the configuration file that affect how the HTML is created.
+        In the DISPLAY section, the following impact the output:
+
+         me = Me :
+                    The name to put for your part of the conversation. It defaults to 'Me'.
+
+        use text color = True :
+                    If False, don't color the text at all
+
+        me text color = blue
+        them text color = magenta :
+                    The color for the names in text output. The color can only be one of the following options:
+                    black, red, green, yellow, blue, magenta, cyan, white, light_grey, dark_grey,
+                    light_red, light_green, light_yellow, light_blue, light_magenta, light_cyan
+
+        reply text color = light_grey :
+                    The color for the reply text """
+
+    def __init__(self, database, me: str, person: str, messages, output_file=None) -> None:
         self._database = database
         self._me = me
         self._person = person
@@ -34,7 +57,7 @@ class TextOutput:
         self._get_messages()
         return
 
-    def _get_messages(self):
+    def _get_messages(self) -> None:
         for message in self._messages.message_list:
             date = message.date
 
@@ -59,7 +82,7 @@ class TextOutput:
                                            self._reply_color)
             self._string_array.append(f'<{day} {date}> {who}: {message.text} {reply_to} {attachment_string}')
 
-    def _color(self, text, color, attrs=None):
+    def _color(self, text: str, color: str, attrs=None) -> str:
         if self._use_color:
             if attrs:
                 return colored(text, color, attrs=attrs)
@@ -68,13 +91,15 @@ class TextOutput:
         else:
             return text
 
-    def save(self):
+    def save(self) -> None:
+        """ Save the text output to the file """
         print('\n'.join(self._string_array), file=self._output_file)
         return
 
-    def print(self):
+    def print(self) -> None:
+        """ Print the text output to stdout """
         print('\n'.join(self._string_array))
         return
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '\n'.join(self._string_array)

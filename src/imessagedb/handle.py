@@ -1,28 +1,39 @@
 
 class Handle:
-    def __init__(self, database, rowid, number, service):
+    """ Class for holding information about a Handle """
+
+    def __init__(self, database, rowid: str, number: str, service: str) -> None:
+        """
+            Parameters
+            ----------
+            database : imessagedb.DB
+                An instance of a connected database
+
+            rowid, number, service : str
+                The parameters are the fields in the database"""
+
         self._database = database
         self._rowid = rowid
         self._number = number
         self._service = service
         self._name = "Unknown"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'{self._rowid}: ID => {self._number}, Service => {self._service}, Name => {self._name}'
 
     @property
-    def rowid(self):
+    def rowid(self) -> str:
         return self._rowid
 
     @property
-    def number(self):
+    def number(self) -> str:
         return self._number
 
     @property
-    def service(self):
+    def service(self) -> str:
         return self._service
 
     @property
-    def name(self):
+    def name(self) -> str:
         return self._name
 
