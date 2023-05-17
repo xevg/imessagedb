@@ -1,8 +1,8 @@
-
 import imessagedb
 import os
 
 
-def test_connection():
+def test_chats():
     database = imessagedb.DB(os.path.join(os.path.dirname(__file__), "chat.db"))
-    assert database
+
+    assert len(database.chats) == 2
