@@ -4,35 +4,32 @@ pushd %~dp0
 
 REM Command file for Sphinx documentation
 
-REM if "%SPHINXBUILD%" == "" (
-REM	set SPHINXBUILD=python -msphinx
-REM )
-set SPHINXBUILD=/opt/homebrew/Cellar/sphinx-doc/7.0.0/bin/sphinx-build
-
+if "%SPHINXBUILD%" == "" (
+	set SPHINXBUILD=sphinx-build
+)
 set SOURCEDIR=.
 set BUILDDIR=_build
-set SPHINXPROJ=imessagedb
-
-if "%1" == "" goto help
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
 	echo.
-	echo.The Sphinx module was not found. Make sure you have Sphinx installed,
-	echo.then set the SPHINXBUILD environment variable to point to the full
-	echo.path of the 'sphinx-build' executable. Alternatively you may add the
-	echo.Sphinx directory to PATH.
+	echo.The 'sphinx-build' command was not found. Make sure you have Sphinx
+	echo.installed, then set the SPHINXBUILD environment variable to point
+	echo.to the full path of the 'sphinx-build' executable. Alternatively you
+	echo.may add the Sphinx directory to PATH.
 	echo.
 	echo.If you don't have Sphinx installed, grab it from
-	echo.http://sphinx-doc.org/
+	echo.https://www.sphinx-doc.org/
 	exit /b 1
 )
 
-%SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS%
+if "%1" == "" goto help
+
+%SPHINXBUILD% -M %1 %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 goto end
 
 :help
-%SPHINXBUILD% -M help %SOURCEDIR% %BUILDDIR% %SPHINXOPTS%
+%SPHINXBUILD% -M help %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 
 :end
 popd
