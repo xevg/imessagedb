@@ -9,18 +9,20 @@
 project = 'iMessageDB'
 copyright = '2023, Xev Gittler'
 author = 'Xev Gittler'
-release = '1.0.1'
+release = '1.0.3'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["myst_parser", 'autoapi.extension']
+extensions = ["myst_parser",
+              'autoapi.extension',
+              "sphinx.ext.napoleon",
+              "sphinx.ext.viewcode"]
+
 autoapi_dirs = ['../src']
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
