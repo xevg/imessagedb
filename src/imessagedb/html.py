@@ -11,21 +11,23 @@ def _generate_thread_row(message):
 
     text = message.text
     # row_string = f'    <tr><td class="blank></td><td class="reply_text_{style}" > {text} </td ></tr>\n'
-    row_string = f'    <tr>' \
-                 f'      <td class="reply_text_{style}">\n' \
-                 f'        <a href="#{message.rowid}">\n' \
-                 f'          <button class="reply_text_{style}"> {text}</button>\n' \
-                 f'        </a>\n' \
-                 f'      </td>\n' \
-                 f'    </tr>\n'
+    row_string = f'{" ":16s}<tr>\n' \
+                 f'{" ":18s}<td class="reply_text_thread">\n' \
+                 f'{" ":20s}<a href="#{message.rowid}">\n' \
+                 f'{" ":22s}<button class="reply_text_{style}"> {text}</button>\n' \
+                 f'{" ":20s}</a>\n' \
+                 f'{" ":18s}</td>\n' \
+                 f'{" ":16s}</tr>\n'
     return row_string
 
 
 def _generate_thread_table(message_list, style):
-    table_string = f'  <table class="thread_table_{style}">\n'
+    table_string = f'{" ":14s}<table class="thread_table_{style}">\n'
     for message in message_list:
         table_string = f'{table_string}{_generate_thread_row(message)}'
-    table_string = f'{table_string}  </table>\n<p>\n'
+    table_string = f'{table_string}' \
+                   f'{" ":14s}</table>\n' \
+                   f'{" ":14s}<p>\n'
     return table_string
 
 
@@ -84,6 +86,7 @@ class HTMLOutput:
                 The color of the name
 
     """
+
     def __init__(self, database, me: str, person: str, message_list,
                  inline=False, output_file=None) -> None:
         """
@@ -119,9 +122,18 @@ class HTMLOutput:
         self._html_array = []
         self._print_and_save(self._generate_head(), self._html_array)
         self._print_and_save("<body>\n", self._html_array)
-        self._print_and_save(f"Got {len(self._message_list):,} messages with {self._person}<p>\n",
+
+        start_time = self._database.control.get('start time', fallback=None)
+        end_time = self._database.control.get('end time', fallback=None)
+        date_string = ""
+        if start_time:
+            date_string = f"from {start_time} "
+        if end_time:
+            date_string = f"{date_string} until {end_time}"
+
+        self._print_and_save(f"Exchanged {len(self._message_list):,} messages with {self._person} {date_string}<p>\n",
                              self._html_array)
-        self._print_and_save('<div class="picboxframe"  id="picbox"> <img src="" /> </div>',
+        self._print_and_save(f'{" ":2s}<div class="picboxframe"  id="picbox"> <img src="" /> </div>\n',
                              self._html_array)
 
         self._html_array.append(self._generate_table(self._message_list))
@@ -145,11 +157,11 @@ class HTMLOutput:
         """ Save to the output file while it is processing """
         array.append(message)
         if self._output_file:
-            print(message, file=self._output_file)
+            print(message, end="", file=self._output_file)
 
     def _generate_table(self, message_list) -> str:
         table_array = []
-        self._print_and_save('  <table class="main_table">\n', table_array)
+        self._print_and_save(f'{" ":2s}<table class="main_table">\n', table_array)
 
         previous_day = ''
 
@@ -163,7 +175,7 @@ class HTMLOutput:
                     previous_day = today
 
                     # If it's a new day, end the table, and start a new one
-                    self._print_and_save('</table>\n  <table class="main_table">\n', table_array)
+                    self._print_and_save(f'{" ":2s}</table>\n\n{" ":2s}<table class="main_table">\n', table_array)
 
                     self._day = datetime(int(message.date[0:4]), int(message.date[5:7]), int(message.date[8:10]),
                                          int(message.date[11:13]), int(message.date[14:16]),
@@ -174,10 +186,11 @@ class HTMLOutput:
                 else:
                     bar(skipped=True)
 
-        self._print_and_save('</table>\n', table_array)
+        self._print_and_save(f'{" ":2s}</table>\n', table_array)
         return ''.join(table_array)
 
     def _generate_row(self, message) -> str:
+        # Specify if the message is from me, or the other person
         if message.is_from_me:
             who = self._me
             style = 'me'
@@ -185,8 +198,11 @@ class HTMLOutput:
             who = self._person
             style = 'them'
 
-        floating = self._database.config['DISPLAY']['popup location'] == 'floating'
+        # Check to see if we want the media box floating or fixed
+        floating_option = self._database.config['DISPLAY'].get('popup location', fallback='floating')
+        floating = floating_option == 'floating'
 
+        # If this message is part of a thread, then show the messages in the thread before it
         thread_table = ""
         if message.thread_originator_guid:
             if message.thread_originator_guid in self._message_list.guids:
@@ -194,17 +210,19 @@ class HTMLOutput:
                 thread_list = original_message.thread
                 thread_list[original_message.rowid] = original_message
                 print_thread = []
+                # sort the threads by the date sent
                 for i in sorted(thread_list.values(), key=lambda x: x.date):
-                    if i == message:
+                    if i == message: # stop at the current message
                         break
                     print_thread.append(i)
                 thread_table = _generate_thread_table(print_thread, style)
 
+        # Generate the attatchment string
         attachments_string = ""
         if message.attachments:
             for attachment_key in message.attachments:
                 if attachment_key not in self._attachment_list.attachment_list:
-                    attachment_strings = f'{attachments_string} <span class="missing"> Attachment missing </span> '
+                    attachments_string = f'{attachments_string} <span class="missing"> Attachment missing </span> '
                     continue
 
                 attachment = self._attachment_list.attachment_list[attachment_key]
@@ -212,7 +230,7 @@ class HTMLOutput:
                 if attachment.skip:
                     continue
                 if attachment.missing:
-                    attachment_strings = f'{attachments_string} <span class="missing"> Attachment missing </span> '
+                    attachment_string = f'{attachments_string} <span class="missing"> Attachment missing </span> '
                     continue
                 if attachment.copy:
                     if attachment.conversion_type == 'HEIC':
@@ -260,153 +278,341 @@ class HTMLOutput:
 
                 attachments_string = f'{attachments_string} <p> {attachment_string} {image_box} '
 
+        # Structure of the text row. The first three columns are normal, the fourth column is complex
+        #   <tr>
+        #     <td> date
+        #     <td> who
+        #     <td>
+        #       <table>
+        #         <tr hidden>
+        #           <td> Edited Row
+        #         </tr>
+        #         <tr>
+        #           <td> Text of message (edited if required)
+        #           <td hidden> extra text
+        #           <td> info button (if configured)
+        #         <tr>
+
         text = _replace_url_to_link(f'{message.text} {attachments_string}')
-        row_string = f'    <tr id={message.rowid}>\n' \
-                     f'      <td class="date"> {self._day} {message.date} </td>\n' \
-                     f'      <td class="name_{style}"> {who}: </td>\n' \
-                     f'      <td class="text_{style}"> {thread_table} {text} </td >\n' \
-                     f'    </tr>\n'
+
+        # Check for edits on the text. If there are edits, then set up the html to allow for that. The row
+        #   doesn't exist if there is no edits
+
+        edited_string = ""
+        edit_table = ""
+        text_cell_edit_row = ""
+
+        if len(message.edits) > 0:
+            edit_table = f'{" ":14s}<div class="edits_{style}">\n'
+            for i in range(0, len(message.edits)):
+                edit_table = f'{edit_table}{" ":16s}"{message.edits[i]} <p>\n'
+            edit_table = f'{edit_table}{" ":14s}</div>\n'
+            edited_string = f'<sub><button class="edited_button"' \
+                            f' onclick="ToggleDisplay(\'{message.rowid}editTable\')"> Edited </button></sub>'
+            text_cell_edit_row = f'{" ":10s}<tr id={message.rowid}editTable class="edits">\n' \
+                                 f'{" ":12s}<td>\n' \
+                                 f'{edit_table} ' \
+                                 f'{" ":12s}</td>\n ' \
+                                 f'{" ":10s}</tr>\n'
+
+        # Check for if we want additional data
+
+        info_text = ""
+        info_button = ""
+        if self._database.control.getboolean('additional details', fallback=False):
+            info_text = f'{" ":12s}<td class="infocell" id={message.rowid}info>\n ' \
+                        f'{" ":14s}<table>\n' \
+                        f'{" ":16s}<tr>\n' \
+                        f'{" ":18s}<td> ChatID: {message.chat_id} </td>\n' \
+                        f'{" ":16s}</tr>\n' \
+                        f'{" ":14s}</table>\n' \
+                        f'{" ":12s}</td>\n'
+            info_button = f'{" ":12s}<td class="button-wrapper"> <button class="text_{style}" ' \
+                          f'onclick="ToggleDisplay(\'{message.rowid}info\')"> ℹ️ </button> </td>\n'
+
+        # Put together the row cells
+
+        date_cell = f'{" ":6s}<td class="date"> {self._day} {message.date} </td>\n'
+        name_cell = f'{" ":6s}<td class="name_{style}"> {who}: </td>\n'
+
+        text_cell = f'{" ":6s}<td>\n ' \
+                    f'{" ":8s}<table>\n' \
+                    f'{text_cell_edit_row}' \
+                    f'{" ":10s}<tr>\n' \
+                    f'{" ":12s}<td class="text_{style}">\n' \
+                    f'{thread_table}' \
+                    f'{" ":14s}{text} {edited_string}\n' \
+                    f'{" ":12s}</td>\n' \
+                    f'{info_text}' \
+                    f'{info_button}' \
+                    f'{" ":10s}</tr>\n' \
+                    f'{" ":8s}</table>\n' \
+                    f'{" ":6s}</td>\n'
+
+        row_string = f'{" ":4s}<tr id={message.rowid}>\n' \
+                     f'{date_cell}' \
+                     f'{name_cell}' \
+                     f'{text_cell}' \
+                     f'{" ":4s}</tr>\n'
+
         return row_string
 
     def _generate_head(self) -> str:
-        if self._database.config['DISPLAY']['popup location'] == 'upper right':
+        popup = self._database.config['DISPLAY'].get('popup location', fallback='upper right')
+        if popup == 'upper right':
             popup_location = 'right'
         else:
             popup_location = 'left'
 
+        me_html_background_color = self._database.config['DISPLAY'].get('me html background_color',
+                                                                        fallback='AliceBlue')
+        them_html_background_color = self._database.config['DISPLAY'].get('them html background color',
+                                                                          fallback='Lavender')
+        thread_background_color = self._database.config['DISPLAY'].get('thread background',
+                                                                       fallback='HoneyDew')
+        me_thread_background_color = self._database.config['DISPLAY'].get('me thread background',
+                                                                          fallback='AliceBlue')
+        them_thread_background_color = self._database.config['DISPLAY'].get('them thread background',
+                                                                            fallback='Lavender')
+        me_html_name_color = self._database.config['DISPLAY'].get('me html name color',
+                                                                  fallback='Blue')
+        them_html_name_color = self._database.config['DISPLAY'].get('them html name color',
+                                                                    fallback='Purple')
+
         css = '''    <style>
-table {
+table {''' + f'''
     width: 100%;
     table-layout: auto;
-}
+''' + ''' }
 
-table.main_table {
+table.main_table {''' + f'''
     border-bottom: 3px solid black;
     border-spacing: 8px;
-}
+''' + ''' }
 
-table.thread_table_me {
+table.thread_table_me {''' + f'''
     width: 50%;
     margin-right: 0px;
     margin-left: auto;
-    background: honeydew;
-    padding: 10px;
+    background: {thread_background_color};
+    padding: 5px;
     border-radius: 30px;
-}
+''' + ''' }
 
-table.thread_table_them {
+table.thread_table_them {''' + f'''
     width: 50%;
     margin-right: auto;
     margin-left: 0px;
-    background: honeydew;
-    padding: 10px;
+    background: {thread_background_color};
+    padding: 5px;
     border-radius: 30px;
-}
+''' + ''' }
 
-td {
+td {''' + f'''
     padding: 0px;
     margin: 0;
-    line-height : 1;
-}
-td.date {
+    line-height: 1;
+''' + ''' }
+
+td.date {''' + f'''
     text-align: left;
     width: 150px;
     vertical-align: text-middle;
     font-size: 80%;
-}
+''' + ''' }
 
-td.name_me {
+td.name_me {''' + f'''
     text-align: right;
     font-weight: bold;
-    color: blue;
+    color: {me_html_name_color};
     width: 50px;
     padding-right: 5px;
     vertical-align: text-middle;
     font-size: 80%;
     
-}
+''' + ''' }
 
-td.name_them {
+td.name_them {''' + f'''
     text-align: right;
     font-weight: bold;
-    color: Purple;
+    color: {them_html_name_color};
     width: 50px;
     padding-right: 5px;
     vertical-align: text-middle;
     font-size: 80%;
-    }
+''' + ''' }
 
-td.text_me {
+td.text_me {''' + f'''
     text-align: right;
     word-wrap: break-word;
     border-radius: 30px;
     padding: 15px;
-    border-spacing: 50px;
-    background: AliceBlue;  
-}
+    border-spacing: 40px;
+    background: {me_html_background_color};  
+''' + ''' }
 
-td.text_them {
+td.text_them {''' + f'''
     text-align: left;
     word-wrap: break-word;
-    background: Lavender;
     border-radius: 30px;
     padding: 15px;
-}
+    border-spacing: 40px;
+    background: {them_html_background_color};
+''' + ''' }
 
-.reply_text_me {
-    border: 2px solid AliceBlue;
-    background: AliceBlue;
+.edits_me {''' + f'''
+    display: none;
+    font-size: 70%;
+    font-style: italics;
+    text-align: right;
+    border-radius: 30px;
+''' + ''' }  
+
+.edits_them {''' + f'''
+    display: none;
+    font-size: 70%;
+    font-style: italics;
+    text-align: left;
+    border-radius: 30px;
+''' + ''' }    
+
+.infocell {''' + f'''
+    margin-right: 0px;
+    margin-left: auto;
+    width: 20%;
+    text-align: right;
+    font-size: 70%;
+    display: none;
+''' + ''' }
+
+button.edited_button {''' + f'''
+    font-size: 50%;
+    border-radius: 30px;
+    font-size: 50%;
+    padding-left: 0px;
+    padding-right: 0px;
+    border-spacing: 0px;
+    border-bottom: 0px;
+    margin-right: 0px;
+    margin-left: 0px;
+    text-align: center;
+    border: 0px;
+    color: blue;
+    font-style: italic;
+    background-color: transparent;
+''' + ''' }
+
+td.button-wrapper {''' + f'''
+    margin-right: 0px;
+    margin-left: 4px;
+    padding-left: 0px;
+    padding-right: 0px;
+    border-spacing: 0px;
+    text-align: center;
+    width:0.1%;
+    background-color: transparent; 
+''' + ''' }
+
+button.text_me {''' + f'''
+    background: {me_html_background_color};
+    border-radius: 30px;
+    font-size: 50%;
+    padding-left: 0px;
+    padding-right: 0px;
+    border-spacing: 0px;
+    border-bottom: 0px;
+    margin-right: 0px;
+    margin-left: 0px;
+    text-align: center;
+    border: 0px;
+''' + ''' }
+
+button.text_them {''' + f'''
+    background: {them_html_background_color};
+    border-radius: 30px;
+    font-size: 50%;
+    padding-left: 0px;
+    padding-right: 0px;
+    border-spacing: 0px;
+    border-bottom: 0px;
+    margin-right: 0px;
+    margin-left: 0px;
+    text-align: center;
+    border: 0px;
+''' + ''' }
+
+reply_text_thread {''' + f'''
+    border: 2px solid;
+    background: {thread_background_color};
     border-radius: 6px;
     border-radius: 50px;
     font-size: 60%
-}
+''' + ''' }
 
-.reply_text_them {
-    border: 2px solid Lavender;
-    background: Lavender;
+.reply_text_me {''' + f'''
+    border: 2px solid;
+    background: {me_html_background_color};
     border-radius: 6px;
     border-radius: 50px;
     font-size: 60%
-}
+''' + ''' }
 
-td.blank {
+.reply_text_them {''' + f'''
+    border: 2px solid;
+    background: {them_html_background_color};
+    border-radius: 6px;
+    border-radius: 50px;
+    font-size: 60%
+''' + ''' }
+
+td.blank {''' + f'''
     border: none;
     width: 50%
-}
+''' + ''' }
 
-.missing {
+.missing {''' + f'''
     color: red;
-}
+''' + ''' }
 
-.badjoin {
+.badjoin {''' + f'''
     color: red;
-}
+''' + ''' }
 
-.imageBox {
+.imageBox {''' + f'''
     position: absolute;
     visibility: hidden;
     height: 200;
     border: solid 1px #CCC;
     padding: 5px;
-}
+''' + ''' }
 
-img {
+img {''' + f'''
     height: 250px;
     width: auto;
-}
+''' + ''' }
 
-.picboxframe {
+.picboxframe {''' + f'''
     position: fixed;
     top: 2%;
-    ''' + f'{popup_location}: 2%' \
-              '''
+    ''' + f'{popup_location}: 2%;' \
+          '''
     background: Blue;
     transition: all .5s ease;
 
-  }
+''' + ''' }
 
     </style>'''
         script = '''  <script>
+    
+    function ToggleDisplay(id) {
+      if (document.getElementById(id).style.display == "none") {
+          document.getElementById(id).style.display = "inline";
+      }
+      else {
+          document.getElementById(id).style.display = "none";
+      }
+    }
+    
     function ShowPicture(id,show, img) {
       if (show=="1") {
         document.getElementById(id).style.visibility = "visible"
@@ -422,7 +628,7 @@ img {
 ''' \
                  f'        var htmlstring = "<video controls onMouseOut=\'ShowMovie(\\\"\" + id + "\\\",0)\'> ' \
                  f'<source src=\'" + movie + "\'> </video>";' \
-'''
+                 '''
         if (show == "1") {
           {
             elem.style.visibility = "visible";
@@ -442,5 +648,5 @@ img {
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     ''' \
-                      f'    <title> {self._person} </title>\n{css}\n{script}\n</head>'
+                      f'    <title> {self._person} </title>\n{css}\n{script}\n</head>\n'
         return head_string

@@ -51,6 +51,8 @@ def get_contacts(configuration):
 
 if __name__ == '__main__':
 
+    imessagedb.run()
+    exit(0)
     config_file = f'{os.environ["HOME"]}/.config/iMessageDB.ini'
     create = False
     verbose = True

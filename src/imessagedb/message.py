@@ -34,7 +34,7 @@ class Message:
     """ Class for holding information about a message """
 
     def __init__(self, database, rowid, guid, date, is_from_me, handle_id, attributed_body, message_summary_info, text,
-                 reply_to_guid, thread_originator_guid, thread_originator_part, chat_id, attachments):
+                 reply_to_guid, thread_originator_guid, thread_originator_part, chat_id, message_attachments):
         """
                 Parameters
                 ----------
@@ -45,7 +45,7 @@ class Message:
                  reply_to_guid, thread_originator_guid, thread_originator_part, chat_id : str
                     The parameters are the fields in the database
 
-                attachments : list
+                message_attachments : list
                     The attachments for this message"""
 
         self._rowid = rowid
@@ -61,9 +61,9 @@ class Message:
         self._thread_originator_guid = thread_originator_guid
         self._thread_originator_part = thread_originator_part
         self._chat_id = chat_id
-        self._attachments = attachments
+        self._attachments = message_attachments
         self._thread = {}
-
+        self._edits = []
 
         # There are a lot of messages that are saved into attributed_body instead of the text field.
         #  There isn't a good way to convert this in Python that I've found, so I have to run a
@@ -76,7 +76,6 @@ class Message:
         try:
             plist = plistlib.loads(self._message_summary_info)
             if 'ec' in plist:
-                self._edits = []
                 for row in plist['ec']['0']:
                     self._edits.append(_convert_attributed_body(row['t']))
                     # row['d'] = _date_from_webkit(row['d'])

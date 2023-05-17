@@ -13,6 +13,7 @@ import configparser
 import logging
 import argparse
 import sys
+from datetime import datetime
 from imessagedb.db import DB
 
 
@@ -39,6 +40,11 @@ force copy = False
 
 skip attachments = False
 
+# Additional details show some other information on each message, including the chat id and any edits that have 
+#  been done
+
+additional details = False
+
 # Some extra verbosity if true
 
 verbose = True
@@ -52,6 +58,10 @@ output_type = html
 # Inline attachments mean that the images are in the HTML instead of loaded when hovered over
 
 inline attachments = False
+
+# Popup location is where the attachment popup window shows up, and is either 'upper right', 'upper left' or 'floating'
+
+popup location = upper right
 
 # 'me' is the name to put for your text messages
 me = Me
@@ -146,7 +156,9 @@ def run() -> None:
     logger.info("Processing parameters")
 
     argument_parser = argparse.ArgumentParser()
-    argument_parser.add_argument("--name", help="Person to get conversations about", required=True)
+    person_mutex_group = argument_parser.add_mutually_exclusive_group()
+    person_mutex_group.add_argument('--handle', help="A list of handles to search against", nargs='*')
+    person_mutex_group.add_argument("--name", help="Person to get conversations about")
     argument_parser.add_argument("-c", "--configfile", help="Location of the configuration file",
                                  default=f'{os.environ["HOME"]}/.config/iMessageDB.ini')
     argument_parser.add_argument("-o", "--output_directory",
@@ -156,11 +168,13 @@ def run() -> None:
     argument_parser.add_argument("-m", "--me", help="The name to use to refer to you", default="Me")
     argument_parser.add_argument("-t", "--output_type", help="The type of output", choices=["text", "html"])
     argument_parser.add_argument("-i", "--inline", help="Show the attachments inline", action="store_true")
-    mutex_group = argument_parser.add_mutually_exclusive_group()
-    mutex_group.add_argument("-f", "--force", help="Force a copy of the attachments", action="store_true")
-    mutex_group.add_argument("--no_copy", help="Don't copy the attachments", action="store_true")
+    copy_mutex_group = argument_parser.add_mutually_exclusive_group()
+    copy_mutex_group.add_argument("-f", "--force", help="Force a copy of the attachments", action="store_true")
+    copy_mutex_group.add_argument("--no_copy", help="Don't copy the attachments", action="store_true")
     argument_parser.add_argument("--no_attachments", help="Don't process attachments at all", action="store_true")
     argument_parser.add_argument("-v", "--verbose", help="Turn on additional output", action="store_true")
+    argument_parser.add_argument('--start_time', help="The start time of the messages in YYYY-MM-DD HH:MM:SS format")
+    argument_parser.add_argument('--end_time', help="The end time of the messages in YYYY-MM-DD HH:MM:SS format")
 
     args = argument_parser.parse_args()
 
@@ -173,8 +187,29 @@ def run() -> None:
     CONTROL = 'CONTROL'
     DISPLAY = 'DISPLAY'
 
-    config.set(CONTROL, 'Person', args.name)
     config.set(CONTROL, 'verbose', str(args.verbose))
+
+    if not args.name and not args.handle:
+        argument_parser.print_help(sys.stderr)
+        print("\n ** You must supply either a name or one or more handles")
+        exit(1)
+
+    person = None
+    numbers = None
+
+    if args.handle:
+        numbers = args.handle
+        person = ', '.join(numbers)
+    if args.name:
+        person = args.name
+        contacts = get_contacts(config)
+        if person.lower() not in contacts.keys():
+            logger.error(f"{person} not known. Please edit your contacts list.")
+            argument_parser.print_help()
+            exit(1)
+
+    config.set(CONTROL, 'Person', person)
+
     if args.output_directory:
         config.set(CONTROL, 'copy directory', args.output_directory)
     if args.no_copy:
@@ -188,33 +223,51 @@ def run() -> None:
     if args.inline:
         config.set(DISPLAY, 'inline attachments', 'True')
 
-    out = sys.stdout
-
-    contacts = get_contacts(config)
-    person = config[CONTROL]['Person']
-    if person.lower() not in contacts.keys():
-        logger.error(f"{person} not known. Please edit contacts list.")
-        argument_parser.print_help()
+    start_date = None
+    end_date = None
+    if args.start_time:
+        try:
+            start_date = datetime.strptime(args.start_time, '%Y-%m-%d %H:%M:%S')
+        except ValueError as exp:
+            argument_parser.print_help(sys.stderr)
+            print(f"\n **Start time not correct: {exp}", file=sys.stderr)
+            exit(1)
+        config.set(CONTROL, 'start time', str(start_date))
+    if args.end_time:
+        try:
+            end_date = datetime.strptime(args.end_time, '%Y-%m-%d %H:%M:%S')
+        except ValueError as exp:
+            argument_parser.print_help(sys.stderr)
+            print(f"\n** End time not correct: {exp}", file=sys.stderr)
+            exit(1)
+        config.set(CONTROL, 'end time', str(end_date))
+    if start_date and end_date and start_date >= end_date:
+        argument_parser.print_help(sys.stderr)
+        print(f"\n **Start date ({start_date}) must be before end date ({end_date})", file=sys.stderr)
         exit(1)
 
-    config[CONTROL]['attachment directory'] = f"{config[CONTROL]['copy directory']}/{person}_attachments"
+    out = sys.stdout
+
+    copy_directory = config[CONTROL].get('copy directory', fallback="/tmp")
+    attachment_directory = f"{copy_directory}/{person}_attachments"
+    config[CONTROL]['attachment directory'] = attachment_directory
 
     filename = f'{person}.html'
-    out = open(f"{config[CONTROL]['copy directory']}/{filename}", 'w')
+    out = open(f"{copy_directory}/{filename}", 'w')
     try:
-        os.mkdir(config['CONTROL']['attachment directory'])
+        os.mkdir(attachment_directory)
     except FileExistsError:
         pass
 
     database = DB(args.database, config=config)
     message_list = database.Messages(person, contacts[person.lower()])
 
-    if config[CONTROL]['output type'] == 'text':
-        database.TextOutput(args.me, person, message_list, database.attachment_list, output_file=out).print()
+    output_type = config[CONTROL].get('output type', fallback='html')
+    if output_type == 'text':
+        database.TextOutput(args.me, person, message_list, output_file=out).print()
     else:
-        database.HTMLOutput(args.me, person, message_list, database.attachment_list, output_file=out)
+        database.HTMLOutput(args.me, person, message_list, output_file=out)
 
-    print("The end")
     database.disconnect()
 
 

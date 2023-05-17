@@ -1,9 +1,22 @@
-import subprocess
-import os
+from datetime import datetime
 from alive_progress import alive_bar
 from imessagedb.message import Message
 
-# The location of the translator binary is the same as this file is located.
+
+mac_epoch_start = int(datetime(2001, 1, 1, 0, 0, 0).strftime('%s'))
+
+
+def _convert_to_database_date(date_string):
+    date_ = datetime.strptime(date_string, '%Y-%m-%d %H:%M:%S')
+    epoch_date = int(date_.strftime('%s'))
+    diff = epoch_date - mac_epoch_start
+    return diff * 1000000000
+
+
+def _convert_from_database_date(date_value):
+    date_ = date_value / 1000000000
+    epoch_date = date_ + mac_epoch_start
+    return datetime.fromtimestamp(epoch_date)
 
 
 class Messages:
@@ -29,13 +42,26 @@ class Messages:
         self._message_list = {}
 
         numbers_string = "','".join(self._numbers)
+        time_rules = []
+        time_where_clause = ""
+        start_time = self._database.control.get('start time', fallback=None)
+        end_time = self._database.control.get('end time', fallback=None)
+        if start_time:
+            database_start_date = _convert_to_database_date(start_time)
+            time_rules.append(f"message.date >= {database_start_date}")
+        if end_time:
+            database_end_date = _convert_to_database_date(end_time)
+            time_rules.append(f"message.date <= {database_end_date}")
+        if len(time_rules) > 0:
+            time_where_clause = f" and {' AND '.join(time_rules)}"
+
         where_clause = "rowid in (" \
                        " select message_id from chat_message_join where chat_id in (" \
                        "  select chat_id from chat_handle_join where handle_id in (" \
                        f"   select rowid from handle where id in ('{numbers_string}')" \
                        "  )" \
                        " )" \
-                       ")"
+                       f") {time_where_clause}"
         select_string = "select message.rowid, guid, " \
                         "datetime(message.date/1000000000 + strftime('%s', '2001-01-01'),'unixepoch','localtime'), " \
                         "message.is_from_me, message.handle_id, " \
@@ -52,12 +78,6 @@ class Messages:
 
         self._database.connection.execute(select_string)
 
-        # At some point Apple switched from using the text field to also using the attributed string field.
-        #  This field is not easily readable, so there is an Objective-C program that does the translation.
-        #  This will be called for each message that has that field.
-        translate = subprocess.Popen([translator_command], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE, text=True)
-
         i = self._database.connection.fetchone()
 
         with alive_bar(row_count_total, title="Getting Messages", stats="({rate}, eta: {eta})") as bar:
@@ -67,9 +87,11 @@ class Messages:
                  reply_to_guid, thread_originator_guid, thread_originator_part, chat_id) = i
                 message_count = message_count + 1
 
+                skip_attachment = self._database.control.getboolean('skip attachments', fallback=False)
                 attachment_list = None
-                if rowid in self._database.attachment_list.message_join:
-                    attachment_list = self._database.attachment_list.message_join[rowid]
+                if not skip_attachment:
+                    if rowid in self._database.attachment_list.message_join:
+                        attachment_list = self._database.attachment_list.message_join[rowid]
 
                 skipped = True
 
