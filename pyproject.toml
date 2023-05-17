@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "imessagedb"
-version = "0.1.5"
+version = "1.0.1"
 description = "Reads the Apple iMessage database"
 readme = "README.md"
 requires-python = ">=3.9"
