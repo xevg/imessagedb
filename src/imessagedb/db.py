@@ -17,7 +17,7 @@ class DB:
     A class to connect to an iMessage database
 
     """
-    def __init__(self, database_name=f"{os.environ['HOME']}/Library/Messages/chat.db", config=None):
+    def __init__(self, database_name=None, config=None):
         """
         Parameters
         ----------
@@ -28,6 +28,8 @@ class DB:
             Configuration information. If none is provided, we will create a default.
         """
 
+        if database_name is None:
+            database_name = f"{os.environ['HOME']}/Library/Messages/chat.db"
         self._database_name = database_name
         self._configuration = config
 
