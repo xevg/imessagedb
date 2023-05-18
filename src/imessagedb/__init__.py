@@ -1,5 +1,5 @@
 """
-provides access to the iMessage chat.db, including parsing and output
+Provides access to the iMessage chat.db, including parsing and output
 
 """
 from importlib.metadata import version
@@ -153,7 +153,7 @@ def get_contacts(configuration: configparser.ConfigParser) -> dict:
 def run() -> None:
     logging.basicConfig(level=logging.INFO, format='%(asctime)s <%(name)s> %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger('main')
-    logger.info("Processing parameters")
+    logger.debug("Processing parameters")
 
     argument_parser = argparse.ArgumentParser()
     person_mutex_group = argument_parser.add_mutually_exclusive_group()
@@ -175,8 +175,13 @@ def run() -> None:
     argument_parser.add_argument("-v", "--verbose", help="Turn on additional output", action="store_true")
     argument_parser.add_argument('--start_time', help="The start time of the messages in YYYY-MM-DD HH:MM:SS format")
     argument_parser.add_argument('--end_time', help="The end time of the messages in YYYY-MM-DD HH:MM:SS format")
+    argument_parser.add_argument('--version', help="Prints the version number", action="store_true")
 
     args = argument_parser.parse_args()
+
+    if args.version:
+        print(f"imessagedb {__version__}", file=sys.stderr)
+        exit(0)
 
     # First read in the configuration file, creating it if need be, then overwrite the values from the command line
     if not os.path.exists(args.configfile):
