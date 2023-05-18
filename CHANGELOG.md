@@ -2,6 +2,14 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.8 (2023-05-18)
+### Fix
+* Save the dates for each edit ([`f22e599`](https://github.com/xevg/imessagedb/commit/f22e599d59dcc1041ef66b6a4780f0ef63ac7ab5))
+* **html:** Move regexp compiles around, fix some hints, fixed color error ([`63b949f`](https://github.com/xevg/imessagedb/commit/63b949fae7dc4b71b1d765aa88c5b4950273c772))
+
+### Documentation
+* **attachments:** Documentation changes ([`6150d6b`](https://github.com/xevg/imessagedb/commit/6150d6b5d2aeabe5c6ceca1122a76e171c0d231c))
+
 ## v1.2.7 (2023-05-18)
 ### Fix
 * Remove personal information from the template config file ([`9f7f258`](https://github.com/xevg/imessagedb/commit/9f7f2581163f6d5efd7db20f7c25587ace8beb7f))
