@@ -31,6 +31,17 @@ can be viewed in the browser. For instance, it will convert HEIC files to PNG so
 browser can display it, and will convert various type of movie files to mp4 and various audio
 files to mp3. If you have many attachments, this can take a long time and take a lot of space. 
 
+### Example Output
+
+This is what the default html version looks like. Note that I am hovering over one of the
+links to ses the image.
+
+![](JulioHtml.png)
+
+This is the same conversation rendered in text.
+
+![](JulioText.png)
+
 ### Command Line
 
 ```python
