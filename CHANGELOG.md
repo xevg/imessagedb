@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.5 (2023-05-18)
+### Fix
+* **attachment:** Fix attachment test to run on github ([`56897b6`](https://github.com/xevg/imessagedb/commit/56897b692ebc7bcae99ecee8267c412820033790))
+
 ## v1.2.4 (2023-05-18)
 
 
