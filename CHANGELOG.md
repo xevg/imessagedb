@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.7 (2023-05-18)
+### Fix
+* Remove personal information from the template config file ([`9f7f258`](https://github.com/xevg/imessagedb/commit/9f7f2581163f6d5efd7db20f7c25587ace8beb7f))
+
 ## v1.2.6 (2023-05-18)
 ### Fix
 * Add --version and the imessagedb script ([`59f9de4`](https://github.com/xevg/imessagedb/commit/59f9de47c0016f3ac6d4013629af65927d347347))
