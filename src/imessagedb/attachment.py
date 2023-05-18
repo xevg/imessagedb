@@ -187,7 +187,7 @@ class Attachment:
             # If the file already exists, do nothing
             return
 
-    def convert_heic_image(self, heic_location, png_location) -> None:
+    def convert_heic_image(self, heic_location: str, png_location: str) -> None:
         """ Convert a HEIC image to a PNG so it can be viewed in the browser """
         # Don't do the expensive conversion if we've already converted it
         if self._force or not os.path.exists(png_location):
@@ -203,7 +203,7 @@ class Attachment:
             # If the file exists already, don't convert it
             return
 
-    def convert_audio_video(self, original, converted) -> None:
+    def convert_audio_video(self, original: str, converted: str) -> None:
         """ Convert an audio or video file from an undisplayable source to something the browser can display"""
         if self._force or not os.path.exists(converted):
             try:
