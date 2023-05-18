@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.11 (2023-05-18)
+### Documentation
+* Added example output ([`619f120`](https://github.com/xevg/imessagedb/commit/619f12093140ad369dd952c82d4daa8a3a46511d))
+
 ## v1.2.10 (2023-05-18)
 ### Documentation
 * Update the readme file with --version ([`e8e1689`](https://github.com/xevg/imessagedb/commit/e8e1689c5622e63cb5f4556663a6b0733f544d58))
