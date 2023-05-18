@@ -14,5 +14,5 @@ def test_attachment():
 
     attachments = database.attachment_list
     attachment = attachments.attachment_list[98368]
-    expected_path = f"{os.environ['HOME']}/Library/Messages/Attachments/4f/15/D7CEBAED-9844-4B25-B841-F7748EA3BCAD/IMG_4911.heic'"
+    expected_path = f"{os.environ['HOME']}/Library/Messages/Attachments/4f/15/D7CEBAED-9844-4B25-B841-F7748EA3BCAD/IMG_4911.heic"
     assert attachment.original_path == expected_path, "Unexpected value in attachment"
