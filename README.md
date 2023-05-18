@@ -115,6 +115,8 @@ viewing
 
 **-v, --verbose**         Turn on additional output
 
+**--version**  Shows the version number and exits
+
 
 ### Configuration File
 
