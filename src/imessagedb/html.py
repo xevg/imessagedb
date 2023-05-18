@@ -1,16 +1,18 @@
 from datetime import datetime
 import re
+import imessagedb
+from imessagedb.message import Message
+from imessagedb.messages import Messages
 from alive_progress import alive_bar
 
 
-def _generate_thread_row(message):
+def _generate_thread_row(message: Message) -> str:
     if message.is_from_me:
         style = 'me'
     else:
         style = 'them'
 
     text = message.text
-    # row_string = f'    <tr><td class="blank></td><td class="reply_text_{style}" > {text} </td ></tr>\n'
     row_string = f'{" ":16s}<tr>\n' \
                  f'{" ":18s}<td class="reply_text_thread">\n' \
                  f'{" ":20s}<a href="#{message.rowid}">\n' \
@@ -21,7 +23,7 @@ def _generate_thread_row(message):
     return row_string
 
 
-def _generate_thread_table(message_list, style):
+def _generate_thread_table(message_list: list, style: str) -> str:
     table_string = f'{" ":14s}<table class="thread_table_{style}">\n'
     for message in message_list:
         table_string = f'{table_string}{_generate_thread_row(message)}'
@@ -31,15 +33,17 @@ def _generate_thread_table(message_list, style):
     return table_string
 
 
-def _replace_url_to_link(value):
+url_pattern = re.compile(r"((https?):((//)|(\\\\))+[\w\d:#@%/;$()~_?\+-=\\\.&]*)", re.MULTILINE | re.UNICODE)
+mailto_pattern = re.compile(r"([\w\-\.]+@(\w[\w\-]+\.)+[\w\-]+)", re.MULTILINE | re.UNICODE)
+
+
+def _replace_url_to_link(value: str) -> str:
     """ From https://gist.github.com/guillaumepiot/4539986 """
 
     # Replace url to link
-    urls = re.compile(r"((https?):((//)|(\\\\))+[\w\d:#@%/;$()~_?\+-=\\\.&]*)", re.MULTILINE | re.UNICODE)
-    value = urls.sub(r'<a href="\1" target="_blank">\1</a>', value)
+    value = url_pattern.sub(r'<a href="\1" target="_blank">\1</a>', value)
     # Replace email to mailto
-    urls = re.compile(r"([\w\-\.]+@(\w[\w\-]+\.)+[\w\-]+)", re.MULTILINE | re.UNICODE)
-    value = urls.sub(r'<a href="mailto:\1">\1</a>', value)
+    value = mailto_pattern.sub(r'<a href="mailto:\1">\1</a>', value)
     return value
 
 
@@ -87,7 +91,7 @@ class HTMLOutput:
 
     """
 
-    def __init__(self, database, me: str, person: str, message_list,
+    def __init__(self, database, me: str, person: str, message_list: Messages,
                  inline=False, output_file=None) -> None:
         """
             Parameters
@@ -159,7 +163,7 @@ class HTMLOutput:
         if self._output_file:
             print(message, end="", file=self._output_file)
 
-    def _generate_table(self, message_list) -> str:
+    def _generate_table(self, message_list: Messages) -> str:
         table_array = []
         self._print_and_save(f'{" ":2s}<table class="main_table">\n', table_array)
 
@@ -189,7 +193,7 @@ class HTMLOutput:
         self._print_and_save(f'{" ":2s}</table>\n', table_array)
         return ''.join(table_array)
 
-    def _generate_row(self, message) -> str:
+    def _generate_row(self, message: Message) -> str:
         # Specify if the message is from me, or the other person
         if message.is_from_me:
             who = self._me
@@ -217,7 +221,7 @@ class HTMLOutput:
                     print_thread.append(i)
                 thread_table = _generate_thread_table(print_thread, style)
 
-        # Generate the attatchment string
+        # Generate the attachment string
         attachments_string = ""
         if message.attachments:
             for attachment_key in message.attachments:
@@ -551,7 +555,7 @@ reply_text_thread {''' + f'''
 
 .reply_text_me {''' + f'''
     border: 2px solid;
-    background: {me_html_background_color};
+    background: {me_thread_background_color};
     border-radius: 6px;
     border-radius: 50px;
     font-size: 60%
@@ -559,7 +563,7 @@ reply_text_thread {''' + f'''
 
 .reply_text_them {''' + f'''
     border: 2px solid;
-    background: {them_html_background_color};
+    background: {them_thread_background_color};
     border-radius: 6px;
     border-radius: 50px;
     font-size: 60%
