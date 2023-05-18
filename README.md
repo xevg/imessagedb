@@ -62,8 +62,7 @@ optional arguments:
                         format
   --end_time END_TIME   The end time of the messages in YYYY-MM-DD HH:MM:SS
                         format
-
-
+  --version             Show the version number and exit
 ```
 
 #### Command line options
