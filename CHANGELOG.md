@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.9 (2023-05-18)
+### Documentation
+* Update the readme file with --version and removed old docs ([`be28241`](https://github.com/xevg/imessagedb/commit/be282410fdca1ffd15838eb928b3273f3448ca93))
+
 ## v1.2.8 (2023-05-18)
 ### Fix
 * Save the dates for each edit ([`f22e599`](https://github.com/xevg/imessagedb/commit/f22e599d59dcc1041ef66b6a4780f0ef63ac7ab5))
