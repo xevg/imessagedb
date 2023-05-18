@@ -309,7 +309,7 @@ class HTMLOutput:
         if len(message.edits) > 0:
             edit_table = f'{" ":14s}<div class="edits_{style}">\n'
             for i in range(0, len(message.edits)):
-                edit_table = f'{edit_table}{" ":16s}"{message.edits[i]} <p>\n'
+                edit_table = f'{edit_table}{" ":16s}"{message.edits[i]["text"]} <p>\n'
             edit_table = f'{edit_table}{" ":14s}</div>\n'
             edited_string = f'<sub><button class="edited_button"' \
                             f' onclick="ToggleDisplay(\'{message.rowid}editTable\')"> Edited </button></sub>'

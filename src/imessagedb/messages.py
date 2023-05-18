@@ -1,22 +1,6 @@
-from datetime import datetime
+from imessagedb.utils import *
 from alive_progress import alive_bar
 from imessagedb.message import Message
-
-
-mac_epoch_start = int(datetime(2001, 1, 1, 0, 0, 0).strftime('%s'))
-
-
-def _convert_to_database_date(date_string):
-    date_ = datetime.strptime(date_string, '%Y-%m-%d %H:%M:%S')
-    epoch_date = int(date_.strftime('%s'))
-    diff = epoch_date - mac_epoch_start
-    return diff * 1000000000
-
-
-def _convert_from_database_date(date_value):
-    date_ = date_value / 1000000000
-    epoch_date = date_ + mac_epoch_start
-    return datetime.fromtimestamp(epoch_date)
 
 
 class Messages:
@@ -47,10 +31,10 @@ class Messages:
         start_time = self._database.control.get('start time', fallback=None)
         end_time = self._database.control.get('end time', fallback=None)
         if start_time:
-            database_start_date = _convert_to_database_date(start_time)
+            database_start_date = convert_to_database_date(start_time)
             time_rules.append(f"message.date >= {database_start_date}")
         if end_time:
-            database_end_date = _convert_to_database_date(end_time)
+            database_end_date = convert_to_database_date(end_time)
             time_rules.append(f"message.date <= {database_end_date}")
         if len(time_rules) > 0:
             time_where_clause = f" and {' AND '.join(time_rules)}"

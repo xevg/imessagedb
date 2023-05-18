@@ -1,15 +1,8 @@
 import plistlib
-import datetime
+from datetime import datetime
 
-from . import attachments
+from imessagedb.utils import *
 import imessagedb
-
-
-def _date_from_webkit(webkit_timestamp: float) -> datetime.datetime:
-    # From https://www.epochconverter.com/webkit
-    epoch_start = datetime.datetime(1601,1,1)
-    delta = datetime.timedelta(microseconds=int(webkit_timestamp*1000000))
-    return epoch_start + delta
 
 
 def _convert_attributed_body(encoded: bytes) -> str:
@@ -33,8 +26,9 @@ def _convert_attributed_body(encoded: bytes) -> str:
 class Message:
     """ Class for holding information about a message """
 
-    def __init__(self, database, rowid, guid, date, is_from_me, handle_id, attributed_body, message_summary_info, text,
-                 reply_to_guid, thread_originator_guid, thread_originator_part, chat_id, message_attachments):
+    def __init__(self, database, rowid: int, guid: str, date: str, is_from_me: bool, handle_id: int,
+                 attributed_body: bytes, message_summary_info: bytes, text: str, reply_to_guid: str,
+                 thread_originator_guid: str, thread_originator_part: str, chat_id: int, message_attachments: list):
         """
                 Parameters
                 ----------
@@ -77,8 +71,8 @@ class Message:
             plist = plistlib.loads(self._message_summary_info)
             if 'ec' in plist:
                 for row in plist['ec']['0']:
-                    self._edits.append(_convert_attributed_body(row['t']))
-                    # row['d'] = _date_from_webkit(row['d'])
+                    self._edits.append({'text': _convert_attributed_body(row['t']),
+                                        'date': convert_from_database_date(row['d'])})
         except plistlib.InvalidFileException as exp:
             pass
 
@@ -97,7 +91,7 @@ class Message:
         return str(return_string)
 
     @property
-    def rowid(self) -> str:
+    def rowid(self) -> int:
         return self._rowid
 
     @property
@@ -105,7 +99,7 @@ class Message:
         return self._guid
 
     @property
-    def date(self) -> datetime.datetime:
+    def date(self) -> str:
         return self._date
 
     @property
@@ -145,7 +139,7 @@ class Message:
         return self._chat_id
 
     @property
-    def attachments(self) -> attachments.Attachments:
+    def attachments(self) -> list:
         return self._attachments
 
     @property
