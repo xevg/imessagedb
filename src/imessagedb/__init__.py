@@ -100,28 +100,10 @@ them html name color = Purple
 #  number as stored in the handle database, so you can do the mapping here, providing the name of a person,
 #  and a comma separated list of numbers
 
-Ashley: +18484676050, ashleywilliams_@live.com, sparkette325@yahoo.com, +17325722108,
-   williaa2@kean.edu
+Samantha: +18434676040, samanthasmilt@gmail.com, 
+   s12ddd2@colt.edu
 Abe: +16103499696
-Alisha: +15082088327
-Emily: +12672803303
-Hermosa: +17329103453
-Kanani: +17325351530
-Randi: +16093394399
-Rose: fhecla@gmail.com, +16109602522
-Marta: +19172974204
-Maxine: mlee99@optonline.net, panda9966@gmail.com, +19084725929, +17323816580
-Monika: +19176678993, mnowak2@binghamton.edu, Xplsumnerx@gmail.com
-Michele: +12153917169
-Marissa: +14016490739
-Lily: lilyyalexb@gmail.com, njlibrn@yahoo.com, +17327887245
-Daniel: daniel@gittler.com, +17326460220, dsg1002@gmail.com, gittlerd@gmail.com, dgittler@berklee.edu
-Kandela: +17324849684
-Tiffany: Wickedblueglow@gmail.com, Tlgreenberg80@gmail.com, +17327105145
-Jessica: jessica.marozine@icloud.com, jessica.marozine@gmail.com, +17326923688
-Becky: rebecca@schore.org, +17329838356
-Lynda: lylasmith559@yahoo.com, lylalombardi@icloud.com, +17323001586
-Stefanie: stefanie.thomas2@gmail.com, thostefa@kean.edu, +17326101065
+Marissa: +14029490739
 '''
 
 
