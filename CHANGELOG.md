@@ -17,7 +17,7 @@
 
 ## v1.0.1 (09/05/2023)
 
-- First publiuc release of `imessagedb`!
+- First public release of `imessagedb`!
 - 
 ## v0.1.0 (09/05/2023)
 
