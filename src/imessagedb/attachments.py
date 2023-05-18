@@ -70,7 +70,7 @@ class Attachments:
 
     @property
     def attachment_list(self) -> dict:
-        """ Return the list of all attachments """
+        """ Return the dictionary of all attachments """
         return self._attachment_list
 
     @property
