@@ -27,7 +27,7 @@ class Chats:
     def __len__(self) -> int:
         return len(self._chat_list)
 
-    def _get_chats(self):
+    def _get_chats(self) -> None:
         self._database.connection.execute('select rowid, chat_identifier, display_name from chat')
         rows = self._database.connection.fetchall()
         for row in rows:
