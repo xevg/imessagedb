@@ -32,7 +32,10 @@ class Attachments:
         self._attachment_list = {}
         self._message_join = {}
 
-        # Get the list of all the attachments
+        # Get the list of all the attachments, unless we are skipping them
+
+        if self._database.control.getboolean('skip attachments', fallback=False):
+            return
 
         self._database.connection.execute('select count(rowid)from attachment')
         (row_count_total) = self._database.connection.fetchone()
