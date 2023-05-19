@@ -14,6 +14,7 @@ class Chats:
         self._database = database
         self._chat_list = {}
         self._chat_identifiers = {}
+        self._chat_names = {}
 
         self._get_chats_from_database()
         return
@@ -36,10 +37,19 @@ class Chats:
             display_name = row[2]
             new_chat = Chat(self._database, rowid, chat_identifier, display_name)
             self.chat_list[new_chat.rowid] = new_chat
+
+            # Add the chat to the chat_identifiers
             if new_chat.chat_identifier in self.chat_identifiers:
-                self.chat_identifiers[new_chat.chat_identifier].append(new_chat)
+                self._chat_identifiers[new_chat.chat_identifier].append(new_chat)
             else:
-                self.chat_identifiers[new_chat.chat_identifier] = [new_chat]
+                self._chat_identifiers[new_chat.chat_identifier] = [new_chat]
+
+            # Add the chat to the chat_names
+            if new_chat.chat_name != "":
+                if new_chat.chat_name in self._chat_names:
+                    self._chat_names[new_chat.chat_name].append(new_chat)
+                else:
+                    self._chat_names[new_chat.chat_name] = [new_chat]
 
         # Add the last chat date to all the chats
         for i in self.chat_list.values():
@@ -85,3 +95,15 @@ class Chats:
     def chat_identifiers(self) -> dict:
         """ Return the list of chats by chat identifier in a dict"""
         return self._chat_identifiers
+
+    def __getitem__(self, item) -> Chat:
+        if item in self._chat_names:
+            return self._chat_names[item]
+
+        if item in self._chat_list:
+            return self._chat_list[item]
+
+        if item in self._chat_identifiers:
+            return self._chat_identifiers[item]
+
+        raise KeyError

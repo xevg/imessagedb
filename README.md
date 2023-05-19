@@ -75,6 +75,7 @@ optional arguments:
                         format
   --version             Show the version number and exit
   --get_handles         Display the list of handles in the database and exit
+  --get_chats           Display the list of chats in the database and exit
 ```
 
 #### Command line options
@@ -131,6 +132,7 @@ viewing
 
 **--get_handles** Display the list of handles in the database and exit
 
+**--get_chats** Display the list of chats in the database and exit
 ### Configuration File
 
 The configuration file is in configparser format. Here is the template that is created

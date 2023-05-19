@@ -137,9 +137,6 @@ def run() -> None:
     logger = logging.getLogger('main')
     logger.debug("Processing parameters")
 
-# TODO: Add get_handles option to list all handles, maybe get_chats as well
-# TODO: Make chats subscriptable
-
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument('--handle', help="A list of handles to search against", nargs='*')
     argument_parser.add_argument("--name", help="Person to get conversations about")

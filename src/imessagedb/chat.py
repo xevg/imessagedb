@@ -55,7 +55,12 @@ class Chat:
         strings = []
         for handle_id in self._participants:
             if handle_id in self._database.handles.handles:
-                strings.append(f'{self._database.handles.handles[handle_id].number} ({handle_id})')
+                number = self._database.handles.handles[handle_id].number
+                name = self._database.handles.name_for_number(number)
+                if name is None:
+                    strings.append(f'{number} ({handle_id})')
+                else:
+                    strings.append(f'{name} ({number}):({handle_id})')
             else:
                 strings.append(f'{handle_id}')
         return ', '.join(strings)

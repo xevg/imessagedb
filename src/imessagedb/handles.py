@@ -77,6 +77,12 @@ class Handles:
         """ Return the list of handles indexed by the number """
         return self._names
 
+    def name_for_number(self, number: str) -> str:
+        if number in self._contact_by_number:
+            return self._contact_by_number[number]
+
+        return None
+
     def __iter__(self):
         return self._handle_list
 
