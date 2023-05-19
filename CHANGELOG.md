@@ -3,6 +3,24 @@
 <!--next-version-placeholder-->
 
 ## v1.2.12 (2023-05-19)
+### Feature
+
+* **handles:** add --get_handles option to display the list of handles in the database ([`53194b9`](https://github.com/xevg/imessagedb/commit/53194b965dfb85a503748c79579f1048608aa020))
+ 
+* **chats:** add --get_chats option to display the list of chats in the database ([`2321eee`](https://github.com/xevg/imessagedb/commit/2321eee149b53ba28b5358e380d9a19b08beaa8f))
+
+
+### Fix
+
+* **main:** change how to add a person ([`c40cbe9`](https://github.com/xevg/imessagedb/commit/c40cbe972a37bbb27d28ca967a5a8dd9ce9c9786))
+
+* **attachments:** skip collecting attachments when 'skip attachments' is set ([`6a78545`](https://github.com/xevg/imessagedb/commit/6a785459cefacfb96c7832270b49fc27c1333cbc))
+
+* **chats:** Changed the output of the chats and updated the documentation ([`877fd81`](https://github.com/xevg/imessagedb/commit/877fd8172038e16300b10a23db4907df2573c565))
+ 
+### Refactor
+
+* **main:** change the structure to allow for general database queries ([`f8ce903`](https://github.com/xevg/imessagedb/commit/f8ce9031963f9dad07f3eb9aa2af9cc714c9ebcd))
 
 
 ## v1.2.11 (2023-05-18)
