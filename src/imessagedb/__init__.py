@@ -138,8 +138,7 @@ def run() -> None:
     logger.debug("Processing parameters")
 
 # TODO: Add get_handles option to list all handles, maybe get_chats as well
-# TODO: Add contact information to handles
-# TODO: Make Handles and chats subscriptable
+# TODO: Make chats subscriptable
 
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument('--handle', help="A list of handles to search against", nargs='*')
@@ -185,32 +184,6 @@ def run() -> None:
 
     config.set(CONTROL, 'verbose', str(args.verbose))
 
-    person = None
-    numbers = None
-
-    if not general_database_query:
-        if args.handle:
-            numbers = args.handle
-            if args.name:
-                person = args.name
-            else:
-                person = ', '.join(numbers)
-        elif args.name:
-            person = args.name
-            contacts = get_contacts(config)
-            if person.lower() not in contacts.keys():
-                logger.error(f"{person} not known. Please edit your contacts list.")
-                argument_parser.print_help()
-                exit(1)
-            # Get rid of new lines and split it into a list
-            numbers = config['CONTACTS'][person].replace('\n', '').split(',')
-        else:
-            argument_parser.print_help(sys.stderr)
-            print("\n ** You must supply at least one of name or one or more handles")
-            exit(1)
-
-        config.set(CONTROL, 'Person', person)
-
     if args.output_directory:
         config.set(CONTROL, 'copy directory', args.output_directory)
     if args.no_copy:
@@ -224,44 +197,6 @@ def run() -> None:
     if args.inline:
         config.set(DISPLAY, 'inline attachments', 'True')
 
-    if not general_database_query:
-        start_date = None
-        end_date = None
-        if args.start_time:
-            try:
-                start_date = datetime.strptime(args.start_time, '%Y-%m-%d %H:%M:%S')
-            except ValueError as exp:
-                argument_parser.print_help(sys.stderr)
-                print(f"\n **Start time not correct: {exp}", file=sys.stderr)
-                exit(1)
-            config.set(CONTROL, 'start time', str(start_date))
-        if args.end_time:
-            try:
-                end_date = datetime.strptime(args.end_time, '%Y-%m-%d %H:%M:%S')
-            except ValueError as exp:
-                argument_parser.print_help(sys.stderr)
-                print(f"\n** End time not correct: {exp}", file=sys.stderr)
-                exit(1)
-            config.set(CONTROL, 'end time', str(end_date))
-        if start_date and end_date and start_date >= end_date:
-            argument_parser.print_help(sys.stderr)
-            print(f"\n **Start date ({start_date}) must be before end date ({end_date})", file=sys.stderr)
-            exit(1)
-
-    out = sys.stdout
-
-    copy_directory = config[CONTROL].get('copy directory', fallback="/tmp")
-    attachment_directory = f"{copy_directory}/{person}_attachments"
-    config[CONTROL]['attachment directory'] = attachment_directory
-
-    if not general_database_query:
-        filename = f'{person}.html'
-        out = open(f"{copy_directory}/{filename}", 'w')
-        try:
-            os.mkdir(attachment_directory)
-        except FileExistsError:
-            pass
-
     if general_database_query:
         config[CONTROL]['skip attachments'] = 'True'
 
@@ -269,6 +204,67 @@ def run() -> None:
     if args.get_handles:
         print(f"Available handles in the database:\n{database.handles.get_handles()}")
         sys.exit(0)
+
+    start_date = None
+    end_date = None
+    if args.start_time:
+        try:
+            start_date = datetime.strptime(args.start_time, '%Y-%m-%d %H:%M:%S')
+        except ValueError as exp:
+            argument_parser.print_help(sys.stderr)
+            print(f"\n **Start time not correct: {exp}", file=sys.stderr)
+            exit(1)
+        config.set(CONTROL, 'start time', str(start_date))
+    if args.end_time:
+        try:
+            end_date = datetime.strptime(args.end_time, '%Y-%m-%d %H:%M:%S')
+        except ValueError as exp:
+            argument_parser.print_help(sys.stderr)
+            print(f"\n** End time not correct: {exp}", file=sys.stderr)
+            exit(1)
+        config.set(CONTROL, 'end time', str(end_date))
+    if start_date and end_date and start_date >= end_date:
+        argument_parser.print_help(sys.stderr)
+        print(f"\n **Start date ({start_date}) must be before end date ({end_date})", file=sys.stderr)
+        exit(1)
+
+    person = None
+    numbers = None
+
+    if args.handle:
+        numbers = args.handle
+        if args.name:
+            person = args.name
+        else:
+            person = ', '.join(numbers)
+    elif args.name:
+        person = args.name
+        contacts = get_contacts(config)
+        if person.lower() not in contacts.keys():
+            logger.error(f"{person} not known. Please edit your contacts list.")
+            argument_parser.print_help()
+            exit(1)
+        # Get rid of new lines and split it into a list
+        numbers = config['CONTACTS'][person].replace('\n', '').split(',')
+    else:
+        argument_parser.print_help(sys.stderr)
+        print("\n ** You must supply at least one of name or one or more handles")
+        exit(1)
+
+    config.set(CONTROL, 'Person', person)
+
+    out = sys.stdout
+
+    copy_directory = config[CONTROL].get('copy directory', fallback="/tmp")
+    attachment_directory = f"{copy_directory}/{person}_attachments"
+    config[CONTROL]['attachment directory'] = attachment_directory
+
+    filename = f'{person}.html'
+    out = open(f"{copy_directory}/{filename}", 'w')
+    try:
+        os.mkdir(attachment_directory)
+    except FileExistsError:
+        pass
 
     message_list = database.Messages(person, numbers)
     output_type = config[CONTROL].get('output type', fallback='html')
