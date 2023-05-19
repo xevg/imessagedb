@@ -26,9 +26,9 @@ def _convert_attributed_body(encoded: bytes) -> str:
 class Message:
     """ Class for holding information about a message """
 
-    def __init__(self, database, rowid: int, guid: str, date: str, is_from_me: bool, handle_id: int,
+    def __init__(self, database, rowid: int, guid: str, date: str, is_from_me: bool, handle_id: str,
                  attributed_body: bytes, message_summary_info: bytes, text: str, reply_to_guid: str,
-                 thread_originator_guid: str, thread_originator_part: str, chat_id: int, message_attachments: list):
+                 thread_originator_guid: str, thread_originator_part: str, chat_id: str, message_attachments: list):
         """
                 Parameters
                 ----------
