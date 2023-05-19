@@ -137,10 +137,13 @@ def run() -> None:
     logger = logging.getLogger('main')
     logger.debug("Processing parameters")
 
+# TODO: Add get_handles option to list all handles, maybe get_chats as well
+# TODO: Add contact information to handles
+# TODO: Make Handles and chats subscriptable
+
     argument_parser = argparse.ArgumentParser()
-    person_mutex_group = argument_parser.add_mutually_exclusive_group()
-    person_mutex_group.add_argument('--handle', help="A list of handles to search against", nargs='*')
-    person_mutex_group.add_argument("--name", help="Person to get conversations about")
+    argument_parser.add_argument('--handle', help="A list of handles to search against", nargs='*')
+    argument_parser.add_argument("--name", help="Person to get conversations about")
     argument_parser.add_argument("-c", "--configfile", help="Location of the configuration file",
                                  default=f'{os.environ["HOME"]}/.config/iMessageDB.ini')
     argument_parser.add_argument("-o", "--output_directory",
@@ -176,24 +179,27 @@ def run() -> None:
 
     config.set(CONTROL, 'verbose', str(args.verbose))
 
-    if not args.name and not args.handle:
-        argument_parser.print_help(sys.stderr)
-        print("\n ** You must supply either a name or one or more handles")
-        exit(1)
-
     person = None
     numbers = None
 
     if args.handle:
         numbers = args.handle
-        person = ', '.join(numbers)
-    if args.name:
+        if args.name:
+            person = args.name
+        else:
+            person = ', '.join(numbers)
+    elif args.name:
         person = args.name
         contacts = get_contacts(config)
         if person.lower() not in contacts.keys():
             logger.error(f"{person} not known. Please edit your contacts list.")
             argument_parser.print_help()
             exit(1)
+        numbers = config['CONTACTS'][person]
+    else:
+        argument_parser.print_help(sys.stderr)
+        print("\n ** You must supply at least one of name or one or more handles")
+        exit(1)
 
     config.set(CONTROL, 'Person', person)
 
@@ -247,7 +253,7 @@ def run() -> None:
         pass
 
     database = DB(args.database, config=config)
-    message_list = database.Messages(person, contacts[person.lower()])
+    message_list = database.Messages(person, numbers)
 
     output_type = config[CONTROL].get('output type', fallback='html')
     if output_type == 'text':
