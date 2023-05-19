@@ -34,7 +34,7 @@ files to mp3. If you have many attachments, this can take a long time and take a
 ### Example Output
 
 This is what the default html version looks like. Note that I am hovering over one of the
-links to ses the image.
+links to show the image.
 
 ![](JulioHtml.png)
 
@@ -74,6 +74,7 @@ optional arguments:
   --end_time END_TIME   The end time of the messages in YYYY-MM-DD HH:MM:SS
                         format
   --version             Show the version number and exit
+  --get_handles         Display the list of handles in the database and exit
 ```
 
 #### Command line options
@@ -127,6 +128,8 @@ viewing
 
 **--version**  Shows the version number and exits
 
+
+**--get_handles** Display the list of handles in the database and exit
 
 ### Configuration File
 
@@ -240,3 +243,6 @@ Interested in contributing? Check out the contributing guidelines. Please note t
 
 `imessagedb` was created by Xev Gittler. It is licensed under the terms of the MIT license.
 
+## Documentation
+
+Full documentation available at https://imessagedb.readthedocs.io/en/latest/

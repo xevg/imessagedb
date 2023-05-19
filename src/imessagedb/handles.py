@@ -14,11 +14,24 @@ class Handles:
         self._database = database
         self._handle_list = {}
         self._numbers = {}
+        self._names = {}
+        self._contact_by_name = {}
+        self._contact_by_number = {}
 
-        self._get_handles()
+        # Process the contacts first
+        if self._database.config.has_section('CONTACTS'):
+            for (key, value) in self._database.config.items('CONTACTS'):
+                value = value.replace('\n', '')
+                values = value.split(',')
+                self._contact_by_name[key] = values
+                for item in values:
+                    self._contact_by_number[item] = key
+
+        self._get_handles_from_database()
         return
 
-    def _get_handles(self):
+    def _get_handles_from_database(self):
+
         self._database.connection.execute('select rowid, id, service from handle')
         rows = self._database.connection.fetchall()
         for row in rows:
@@ -27,10 +40,27 @@ class Handles:
             service = row[2]
             new_handle = Handle(self._database, rowid, number, service)
             self._handle_list[new_handle.rowid] = new_handle
+
+            # Add the handle to the numbers dictionary
             if new_handle.number in self._numbers:
                 self._numbers[new_handle.number].append(new_handle)
             else:
                 self._numbers[new_handle.number] = [new_handle]
+
+            # Add the handle to the names dictonary
+            if new_handle.number in self._contact_by_number:
+                name = self._contact_by_number[new_handle.number]
+                if name in self._names:
+                    self.names[name].append(new_handle)
+                else:
+                    self._names[name] = [new_handle]
+
+    def get_handles(self) -> str:
+        """ Return a string with the list of handles"""
+
+        number_list = list(self._numbers.keys())
+        return_string = '\n'.join(number_list)
+        return return_string
 
     @property
     def handles(self) -> dict:
@@ -41,6 +71,11 @@ class Handles:
     def numbers(self) -> dict:
         """ Return the list of handles indexed by the number """
         return self._numbers
+
+    @property
+    def names(self) -> dict:
+        """ Return the list of handles indexed by the number """
+        return self._names
 
     def __iter__(self):
         return self._handle_list
@@ -53,3 +88,14 @@ class Handles:
         for i in sorted(self._handle_list.keys()):
             handle_array.append(self._handle_list[i])
         return '\n'.join(map(str, handle_array))
+
+    def __getitem__(self, item: str) -> Handle:
+        if item in self._names:
+            return self._names[item]
+
+        if item in self._numbers:
+            return self._numbers[item]
+
+        raise KeyError
+
+
