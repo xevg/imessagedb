@@ -2,6 +2,9 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.12 (2023-05-19)
+
+
 ## v1.2.11 (2023-05-18)
 ### Documentation
 * Added example output ([`619f120`](https://github.com/xevg/imessagedb/commit/619f12093140ad369dd952c82d4daa8a3a46511d))
