@@ -157,10 +157,10 @@ def run() -> None:
     argument_parser.add_argument('--start_time', help="The start time of the messages in YYYY-MM-DD HH:MM:SS format")
     argument_parser.add_argument('--end_time', help="The end time of the messages in YYYY-MM-DD HH:MM:SS format")
     argument_parser.add_argument('--version', help="Prints the version number", action="store_true")
-    argument_parser.add_argument('--get_handles', help="Display the list of handles in the database and exit",
-                                 action="store_true")
-    argument_parser.add_argument('--get_chats', help="Display the list of chats in the database and exit",
-                                 action="store_true")
+    argument_parser.add_argument('--get_handles', '--get-handles',
+                                 help="Display the list of handles in the database and exit", action="store_true")
+    argument_parser.add_argument('--get_chats', '--get-chats',
+                                 help="Display the list of chats in the database and exit", action="store_true")
 
     args = argument_parser.parse_args()
 
@@ -192,18 +192,6 @@ def run() -> None:
     if args.inline:
         config.set(DISPLAY, 'inline attachments', 'True')
 
-    if args.get_handles or args.get_chats:
-        config[CONTROL]['skip attachments'] = 'True'
-
-    database = DB(args.database, config=config)
-    if args.get_handles:
-        print(f"Available handles in the database:\n{database.handles.get_handles()}")
-        sys.exit(0)
-
-    if args.get_chats:
-        print(f"Available chats in the database:\n{database.chats.get_chats()}")
-        sys.exit(0)
-
     start_date = None
     end_date = None
     if args.start_time:
@@ -227,30 +215,49 @@ def run() -> None:
         print(f"\n **Start date ({start_date}) must be before end date ({end_date})", file=sys.stderr)
         exit(1)
 
-    person = None
-    numbers = None
+    generic_database_request = False
+    if args.get_handles or args.get_chats:
+        config[CONTROL]['skip attachments'] = 'True'
+        generic_database_request = True
 
-    if args.handle:
-        numbers = args.handle
-        if args.name:
+    if not generic_database_request:
+
+        person = None
+        numbers = None
+
+        if args.handle:
+            numbers = args.handle
+            if args.name:
+                person = args.name
+            else:
+                person = ', '.join(numbers)
+        elif args.name:
             person = args.name
+            contacts = get_contacts(config)
+            if person.lower() not in contacts.keys():
+                logger.error(f"{person} not known. Please edit your contacts list.")
+                argument_parser.print_help()
+                exit(1)
+            # Get rid of new lines and split it into a list
+            numbers = config['CONTACTS'][person].replace('\n', '').split(',')
         else:
-            person = ', '.join(numbers)
-    elif args.name:
-        person = args.name
-        contacts = get_contacts(config)
-        if person.lower() not in contacts.keys():
-            logger.error(f"{person} not known. Please edit your contacts list.")
-            argument_parser.print_help()
+            argument_parser.print_help(sys.stderr)
+            print("\n ** You must supply either a name or one or more handles")
             exit(1)
-        # Get rid of new lines and split it into a list
-        numbers = config['CONTACTS'][person].replace('\n', '').split(',')
-    else:
-        argument_parser.print_help(sys.stderr)
-        print("\n ** You must supply at least one of name or one or more handles")
-        exit(1)
 
-    config.set(CONTROL, 'Person', person)
+        config.set(CONTROL, 'Person', person)
+
+    # Connect to the database
+
+    database = DB(args.database, config=config)
+
+    if args.get_handles:
+        print(f"Available handles in the database:\n{database.handles.get_handles()}")
+        sys.exit(0)
+
+    if args.get_chats:
+        print(f"Available chats in the database:\n{database.chats.get_chats()}")
+        sys.exit(0)
 
     out = sys.stdout
 
@@ -264,6 +271,8 @@ def run() -> None:
         os.mkdir(attachment_directory)
     except FileExistsError:
         pass
+
+    # TODO: Implement functions to display a chat, given a chat_name or chat_id
 
     message_list = database.Messages(person, numbers)
     output_type = config[CONTROL].get('output type', fallback='html')
