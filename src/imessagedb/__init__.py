@@ -162,16 +162,14 @@ def run() -> None:
     argument_parser.add_argument('--version', help="Prints the version number", action="store_true")
     argument_parser.add_argument('--get_handles', help="Display the list of handles in the database and exit",
                                  action="store_true")
+    argument_parser.add_argument('--get_chats', help="Display the list of chats in the database and exit",
+                                 action="store_true")
 
     args = argument_parser.parse_args()
 
     if args.version:
         print(f"imessagedb {__version__}", file=sys.stderr)
         exit(0)
-
-    general_database_query = False
-    if args.get_handles:
-        general_database_query = True
 
     # First read in the configuration file, creating it if need be, then overwrite the values from the command line
     if not os.path.exists(args.configfile):
@@ -197,12 +195,16 @@ def run() -> None:
     if args.inline:
         config.set(DISPLAY, 'inline attachments', 'True')
 
-    if general_database_query:
+    if args.get_handles or args.get_chats:
         config[CONTROL]['skip attachments'] = 'True'
 
     database = DB(args.database, config=config)
     if args.get_handles:
         print(f"Available handles in the database:\n{database.handles.get_handles()}")
+        sys.exit(0)
+
+    if args.get_chats:
+        print(f"Available chats in the database:\n{database.chats.get_chats()}")
         sys.exit(0)
 
     start_date = None

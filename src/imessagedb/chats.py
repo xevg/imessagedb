@@ -15,7 +15,7 @@ class Chats:
         self._chat_list = {}
         self._chat_identifiers = {}
 
-        self._get_chats()
+        self._get_chats_from_database()
         return
 
     def __repr__(self) -> str:
@@ -27,7 +27,7 @@ class Chats:
     def __len__(self) -> int:
         return len(self._chat_list)
 
-    def _get_chats(self) -> None:
+    def _get_chats_from_database(self) -> None:
         self._database.connection.execute('select rowid, chat_identifier, display_name from chat')
         rows = self._database.connection.fetchall()
         for row in rows:
@@ -61,6 +61,20 @@ class Chats:
             self.chat_list[row[0]].add_participant(row[1])
 
         return
+
+    def get_chats(self) -> str:
+        """ Return a string with the list of chats in the database"""
+        return_array = []
+        for chat_id in sorted(self._chat_list):
+            chat = self._chat_list[chat_id]
+            chat_name = ""
+            if chat.chat_name and chat.chat_name != '':
+                chat_name = f"{chat.rowid} ({chat.chat_name}):"
+            else:
+                chat_name = f"{chat.rowid}:"
+            chat_string = f"{chat_name} Participants: {chat.participants}, Last Message Sent: {chat.last_message_date}"
+            return_array.append(chat_string)
+        return '\n'.join(return_array)
 
     @property
     def chat_list(self) -> dict:
