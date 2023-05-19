@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.2.13 (2023-05-19)
+### Documentation
+* Fix the changelog ([`323704b`](https://github.com/xevg/imessagedb/commit/323704b45200d9e51a386f8ee59d450a85e86698))
+
 ## v1.2.12 (2023-05-19)
 ### Feature
 
