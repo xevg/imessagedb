@@ -1,14 +1,13 @@
-import sqlite3
-import os
 import configparser
+import os
+import sqlite3
 
 import imessagedb
 from imessagedb.attachments import Attachments
-from imessagedb.messages import Messages
-from imessagedb.message import Message
 from imessagedb.chats import Chats
 from imessagedb.handles import Handles
 from imessagedb.html import HTMLOutput
+from imessagedb.messages import Messages
 from imessagedb.text import TextOutput
 
 
@@ -48,20 +47,20 @@ class DB:
         self._attachment_list = Attachments(self)
         return
 
-    def Messages(self, person: str, numbers: list) -> Messages:
+    def Messages(self, query_type: str, title: str, numbers: list = None, chat_id: str = None) -> Messages:
         """A wrapper to create a Messages class
         """
-        return Messages(self, person, numbers)
+        return Messages(self, query_type, title, numbers=numbers, chat_id=chat_id)
 
-    def HTMLOutput(self, me: str, person: str, message_list: Messages, inline=False, output_file=None) -> HTMLOutput:
+    def HTMLOutput(self, me: str, message_list: Messages, inline=False, output_file=None) -> HTMLOutput:
         """A wrapper to create an HTMLOutput class
         """
-        return HTMLOutput(self, me, person, message_list, inline, output_file)
+        return HTMLOutput(self, me, message_list, inline, output_file)
 
-    def TextOutput(self, me: str, person: str, message_list: Messages, output_file=None) -> TextOutput:
+    def TextOutput(self, me: str, message_list: Messages, output_file=None) -> TextOutput:
         """A wrapper to create a TextOutput class
         """
-        return TextOutput(self, me, person, message_list, output_file)
+        return TextOutput(self, me, message_list, output_file)
 
     def disconnect(self) -> None:
         """Disconnects from the database

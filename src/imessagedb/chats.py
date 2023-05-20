@@ -2,7 +2,7 @@ from imessagedb.chat import Chat
 
 
 class Chats:
-    """ All handles in the database """
+    """ All Chats in the database """
 
     def __init__(self, database) -> None:
         """
@@ -12,9 +12,9 @@ class Chats:
                 An instance of a connected database"""
 
         self._database = database
-        self._chat_list = {}
-        self._chat_identifiers = {}
-        self._chat_names = {}
+        self._chat_list = {}  # Chat list by rowid
+        self._chat_identifiers = {}  # Chat list by identifier
+        self._chat_names = {}  # Chat list by name
 
         self._get_chats_from_database()
         return
@@ -90,6 +90,11 @@ class Chats:
     def chat_list(self) -> dict:
         """ Return the list of chats by rowid in a dict"""
         return self._chat_list
+
+    @property
+    def chat_names(self) -> dict:
+        """ Return the list of chats by rowid in a dict"""
+        return self._chat_names
 
     @property
     def chat_identifiers(self) -> dict:

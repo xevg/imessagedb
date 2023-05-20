@@ -2,7 +2,7 @@
 class Handle:
     """ Class for holding information about a Handle """
 
-    def __init__(self, database, rowid: str, number: str, service: str) -> None:
+    def __init__(self, database, rowid: str, name: str, number: str, service: str) -> None:
         """
             Parameters
             ----------
@@ -10,16 +10,19 @@ class Handle:
                 An instance of a connected database
 
             rowid, number, service : str
-                The parameters are the fields in the database"""
+                The parameters are the fields in the database
+
+            name : str
+                A name to associate with it, from the contacts list"""
 
         self._database = database
         self._rowid = rowid
         self._number = number
         self._service = service
-        self._name = "Unknown"
+        self._name = name.title()
 
     def __repr__(self) -> str:
-        return f'{self._rowid}: ID => {self._number}, Service => {self._service}, Name => {self._name}'
+        return f'{self._rowid}: Name => {self._name}, ID => {self._number}, Service => {self._service} '
 
     @property
     def rowid(self) -> str:

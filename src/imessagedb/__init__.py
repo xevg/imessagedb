@@ -15,7 +15,7 @@ import argparse
 import sys
 from datetime import datetime
 from imessagedb.db import DB
-
+from imessagedb.utils import *
 
 DEFAULT_CONFIGURATION = '''
 [CONTROL]
@@ -71,27 +71,27 @@ me = Me
 #   black, red, green, yellow, blue, magenta, cyan, white, light_grey, dark_grey,
 #   light_red, light_green, light_yellow, light_blue, light_magenta, light_cyan
 
+# The way that the color selection works is that it will use the first color on the color list for the first person
+#  in the conversation, the second for the second, third for the third, etc. If there are more participants than colors,
+#  it will wrap around to the first color.
+
 use text color = True
-me text color = blue
-them text color = magenta
+text color list = red, green, yellow, blue, magenta, cyan
 reply text color = light_grey
 
-# The background color of the text messages for you and for the other person in html output
+# The background and name color of the messages in html output
 # The options for colors can be found here: https://www.w3schools.com/cssref/css_colors.php
 
-me html background color = AliceBlue
-them html background color = Lavender
+# The way that the color selection works is that it will use the first color on the color list for the first person
+#  in the conversation, the second for the second, third for the third, etc. If there are more participants than colors,
+#  it will wrap around to the first color.
+
+html background color list = AliceBlue, Cyan, Gold, Lavender, LightGreen, PeachPuff, Wheat
+html name color list = Blue, DarkCyan, DarkGoldenRod, Purple, DarkGreen, Orange, Sienna
 
 # The background color of the thread in replies
 
 thread background = HoneyDew
-me thread background = AliceBlue
-them thread background = Lavender
-
-# The color of the name in the html output
-
-me html name color = Blue
-them html name color = Purple
 
 
 [CONTACTS]
@@ -108,9 +108,7 @@ Marissa: +14029490739
 
 
 def _create_default_configuration(filename: str) -> None:
-    """Generates a default configuration if one is not passed in
-
-    """
+    """Generates a default configuration if one is not passed in"""
 
     f = open(filename, "w")
     f.write(DEFAULT_CONFIGURATION)
@@ -118,7 +116,7 @@ def _create_default_configuration(filename: str) -> None:
     return
 
 
-def get_contacts(configuration: configparser.ConfigParser) -> dict:
+def _get_contacts(configuration: configparser.ConfigParser) -> dict:
     result = {}
     contact_list = configuration.items('CONTACTS')
     for contact in contact_list:
@@ -133,13 +131,21 @@ def get_contacts(configuration: configparser.ConfigParser) -> dict:
 
 
 def run() -> None:
+    """ Run the imessagedb command line"""
+
+    out = sys.stdout
+
     logging.basicConfig(level=logging.INFO, format='%(asctime)s <%(name)s> %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     logger = logging.getLogger('main')
     logger.debug("Processing parameters")
 
     argument_parser = argparse.ArgumentParser()
-    argument_parser.add_argument('--handle', help="A list of handles to search against", nargs='*')
     argument_parser.add_argument("--name", help="Person to get conversations about")
+
+    type_mutex_group = argument_parser.add_mutually_exclusive_group()
+    type_mutex_group.add_argument('--handle', help="A list of handles to search against", nargs='*')
+    type_mutex_group.add_argument('--chat', help="A chat to print")
+
     argument_parser.add_argument("-c", "--configfile", help="Location of the configuration file",
                                  default=f'{os.environ["HOME"]}/.config/iMessageDB.ini')
     argument_parser.add_argument("-o", "--output_directory",
@@ -220,32 +226,45 @@ def run() -> None:
         config[CONTROL]['skip attachments'] = 'True'
         generic_database_request = True
 
+    person = None
+    numbers = None
+
     if not generic_database_request:
-
-        person = None
-        numbers = None
-
-        if args.handle:
-            numbers = args.handle
-            if args.name:
-                person = args.name
-            else:
-                person = ', '.join(numbers)
-        elif args.name:
-            person = args.name
-            contacts = get_contacts(config)
-            if person.lower() not in contacts.keys():
-                logger.error(f"{person} not known. Please edit your contacts list.")
-                argument_parser.print_help()
-                exit(1)
-            # Get rid of new lines and split it into a list
-            numbers = config['CONTACTS'][person].replace('\n', '').split(',')
+        if args.chat:
+            person = f"chat_{args.chat}"
         else:
-            argument_parser.print_help(sys.stderr)
-            print("\n ** You must supply either a name or one or more handles")
-            exit(1)
+            if args.handle:
+                numbers = args.handle
+                if args.name:
+                    person = args.name
+                else:
+                    person = ', '.join(numbers)
+            elif args.name:
+                person = args.name
+                contacts = _get_contacts(config)
+                if person.lower() not in contacts.keys():
+                    logger.error(f"{person} not known. Please edit your contacts list.")
+                    argument_parser.print_help()
+                    exit(1)
+                # Get rid of new lines and split it into a list
+                numbers = config['CONTACTS'][person].replace('\n', '').split(',')
+            else:
+                argument_parser.print_help(sys.stderr)
+                print("\n ** You must supply either a name or one or more handles")
+                exit(1)
 
-        config.set(CONTROL, 'Person', person)
+            config.set(CONTROL, 'Person', person)
+
+        copy_directory = config[CONTROL].get('copy directory', fallback="/tmp")
+        attachment_directory = f"{copy_directory}/{safe_filename(person)}_attachments"
+        config[CONTROL]['attachment directory'] = attachment_directory
+
+        filename = f'{safe_filename(person)}.html'
+        out = open(f"{copy_directory}/{filename}", 'w')
+        try:
+            os.mkdir(attachment_directory)
+        except FileExistsError:
+            pass
 
     # Connect to the database
 
@@ -259,27 +278,40 @@ def run() -> None:
         print(f"Available chats in the database:\n{database.chats.get_chats()}")
         sys.exit(0)
 
-    out = sys.stdout
+    if args.chat:
+        chat_id = args.chat
+        title = args.chat
+        if args.chat in database.chats.chat_names:
+            chats = database.chats.chat_names[args.chat]
+            if len(chats) != 1:
+                error_string = f"You have {len(chats)} chats named {args.chat}, " \
+                               f"but this program can only handle the case where there is one. " \
+                               f"Rename your group and try again."
+                logger.error(error_string)
+                exit(1)
+            chat_id = chats[0].rowid
+            title = args.chat
+        elif args.chat in database.chats.chat_list:
+            chat_id = args.chat
+            if database.chats.chat_list[chat_id].chat_name:
+                title = database.chats.chat_list[chat_id].chat_name
+            else:
+                title = chat_id
+        else:
+            logger.error(f"{args.chat} not recognized as a chat. Run 'imessagedb --get_chats' to get the list of chats")
+            argument_parser.print_help()
+            exit(1)
 
-    copy_directory = config[CONTROL].get('copy directory', fallback="/tmp")
-    attachment_directory = f"{copy_directory}/{person}_attachments"
-    config[CONTROL]['attachment directory'] = attachment_directory
+        message_list = database.Messages('chat', title, chat_id=chat_id)
+    else:
 
-    filename = f'{person}.html'
-    out = open(f"{copy_directory}/{filename}", 'w')
-    try:
-        os.mkdir(attachment_directory)
-    except FileExistsError:
-        pass
+        message_list = database.Messages('person', person, numbers=numbers)
 
-    # TODO: Implement functions to display a chat, given a chat_name or chat_id
-
-    message_list = database.Messages(person, numbers)
     output_type = config[CONTROL].get('output type', fallback='html')
     if output_type == 'text':
-        database.TextOutput(args.me, person, message_list, output_file=out).print()
+        database.TextOutput(args.me, message_list, output_file=out).print()
     else:
-        database.HTMLOutput(args.me, person, message_list, output_file=out)
+        database.HTMLOutput(args.me, message_list, output_file=out)
 
     database.disconnect()
 

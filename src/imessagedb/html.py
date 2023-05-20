@@ -1,36 +1,10 @@
 from datetime import datetime
 import re
+import string
 import imessagedb
 from imessagedb.message import Message
 from imessagedb.messages import Messages
 from alive_progress import alive_bar
-
-
-def _generate_thread_row(message: Message) -> str:
-    if message.is_from_me:
-        style = 'me'
-    else:
-        style = 'them'
-
-    text = message.text
-    row_string = f'{" ":16s}<tr>\n' \
-                 f'{" ":18s}<td class="reply_text_thread">\n' \
-                 f'{" ":20s}<a href="#{message.rowid}">\n' \
-                 f'{" ":22s}<button class="reply_text_{style}"> {text}</button>\n' \
-                 f'{" ":20s}</a>\n' \
-                 f'{" ":18s}</td>\n' \
-                 f'{" ":16s}</tr>\n'
-    return row_string
-
-
-def _generate_thread_table(message_list: list, style: str) -> str:
-    table_string = f'{" ":14s}<table class="thread_table_{style}">\n'
-    for message in message_list:
-        table_string = f'{table_string}{_generate_thread_row(message)}'
-    table_string = f'{table_string}' \
-                   f'{" ":14s}</table>\n' \
-                   f'{" ":14s}<p>\n'
-    return table_string
 
 
 url_pattern = re.compile(r"((https?):((//)|(\\\\))+[\w\d:#@%/;$()~_?\+-=\\\.&]*)", re.MULTILINE | re.UNICODE)
@@ -74,25 +48,20 @@ class HTMLOutput:
     me = Me :
                 The name to put for your part of the conversation. It defaults to 'Me'.
 
-    me html background color = AliceBlue
-    them html background color = Lavender :
-                The background color of the text messages for you and for the other person.
-                The options for colors can be found here: https://www.w3schools.com/cssref/css_colors.php
+    html background color list = AliceBlue, Cyan, Gold, Lavender, LightGreen, PeachPuff, Wheat
+    html name color list = Blue, DarkCyan, DarkGoldenRod, Purple, DarkGreen, Orange, Sienna :
+        The background and name color of the messages in html output
+        The options for colors can be found here: https://www.w3schools.com/cssref/css_colors.php
 
+        The way that the color selection works is that it will use the first color on the color list for the
+        first person in the conversation, the second for the second, third for the third, etc. If there are more
+        participants than colors, it will wrap around to the first color.
 
-    thread background = HoneyDew
-    me thread background = AliceBlue
-    them thread background = Lavender :
-                The background color of the thread in replies
-
-    me html name color = Blue
-    them html name color = Purple :
-                The color of the name
-
+    thread background = HoneyDew :
+        The background color of the thread in replies
     """
 
-    def __init__(self, database, me: str, person: str, message_list: Messages,
-                 inline=False, output_file=None) -> None:
+    def __init__(self, database, me: str, messages: Messages, inline=False, output_file=None) -> None:
         """
             Parameters
             ----------
@@ -102,10 +71,7 @@ class HTMLOutput:
             me : str
                 Your display name
 
-            person : str
-                The name of the person in the conversation
-
-            message_list: imessagedb.DB.Messages
+            messages: imessagedb.DB.Messages
                  The messages
 
             inline : bool
@@ -116,12 +82,13 @@ class HTMLOutput:
 
         self._database = database
         self._me = me
-        self._person = person
-        self._message_list = message_list
+        self._messages = messages
         self._attachment_list = self._database.attachment_list
         self._inline = inline
         self._output_file = output_file
 
+        self._name_map = {}
+        self._color_list = self._get_next_color()
         self._day = 'UNK'
         self._html_array = []
         self._print_and_save(self._generate_head(), self._html_array)
@@ -135,12 +102,13 @@ class HTMLOutput:
         if end_time:
             date_string = f"{date_string} until {end_time}"
 
-        self._print_and_save(f"Exchanged {len(self._message_list):,} messages with {self._person} {date_string}<p>\n",
+        self._print_and_save(f"Exchanged {len(self._messages):,} messages with " +
+                             f"{self._messages.title} {date_string}<p>\n",
                              self._html_array)
         self._print_and_save(f'{" ":2s}<div class="picboxframe"  id="picbox"> <img src="" /> </div>\n',
                              self._html_array)
 
-        self._html_array.append(self._generate_table(self._message_list))
+        self._html_array.append(self._generate_table(self._messages))
         self._print_and_save('</body>\n</html>\n',
                              self._html_array)
 
@@ -162,6 +130,34 @@ class HTMLOutput:
         array.append(message)
         if self._output_file:
             print(message, end="", file=self._output_file)
+
+    def _generate_thread_row(self, message: Message) -> str:
+        who_data = self._get_name(message.handle_id)
+        who = who_data['name']
+        style = who_data['style']
+
+        text = message.text
+        row_string = f'{" ":16s}<tr>\n' \
+                     f'{" ":18s}<td class="reply_name" style="color: {who_data["name_color"]};"> ' \
+                     f'{who_data["name"]}: </td>\n' \
+                     f'{" ":18s}<td class="reply_text_thread">\n' \
+                     f'{" ":20s}<a href="#{message.rowid}">\n' \
+                     f'{" ":22s}<button class="reply_text_{style}" style="background: ' \
+                     f'{who_data["background_color"]};"> ' \
+                     f'{text}</button>\n' \
+                     f'{" ":20s}</a>\n' \
+                     f'{" ":18s}</td>\n' \
+                     f'{" ":16s}</tr>\n'
+        return row_string
+
+    def _generate_thread_table(self, message_list: list, style: str) -> str:
+        table_string = f'{" ":14s}<table class="thread_table_{style}">\n'
+        for message in message_list:
+            table_string = f'{table_string}{self._generate_thread_row(message)}'
+        table_string = f'{table_string}' \
+                       f'{" ":14s}</table>\n' \
+                       f'{" ":14s}<p>\n'
+        return table_string
 
     def _generate_table(self, message_list: Messages) -> str:
         table_array = []
@@ -193,14 +189,47 @@ class HTMLOutput:
         self._print_and_save(f'{" ":2s}</table>\n', table_array)
         return ''.join(table_array)
 
+    def _get_next_color(self):
+        """ A generator function to return the next color"""
+
+        counter = -1
+        default_background_color_list = 'AliceBlue, Cyan, Gold, Lavender, LightGreen, PeachPuff, Wheat'
+        default_name_color_list = 'Blue, DarkCyan, DarkGoldenRod, Purple, DarkGreen, Orange, Sienna'
+        background_color_list = self._database.config.get('DISPLAY', 'html background color list',
+                                                          fallback=default_background_color_list)
+        name_color_list = self._database.config.get('DISPLAY', 'html name color list',
+                                                    fallback=default_name_color_list)
+
+        background_colors = background_color_list.translate({ord(c): None for c in string.whitespace}).split(',')
+        name_colors = name_color_list.translate({ord(c): None for c in string.whitespace}).split(',')
+
+        while True:
+            counter += 1
+            yield [background_colors[counter % len(background_color_list)],
+                   name_colors[counter % len(name_color_list)]]
+
+    def _get_name(self, handle_id: str) -> dict:
+        if handle_id not in self._name_map:
+            (background_color, name_color) = next(self._color_list)
+            handle_list = self._database.handles.handles
+            if handle_id == 0:  # 0 is me
+                self._name_map[handle_id] = {'name': self._me, 'background_color': background_color,
+                                             'name_color': name_color, 'style': 'me'}
+            elif handle_id in handle_list:
+                handle = handle_list[handle_id]
+                self._name_map[handle_id] = {'name': handle.name, 'background_color': background_color,
+                                             'name_color': name_color, 'style': 'them'}
+            else:
+                self._name_map[handle_id] = {'name': handle_id, 'background_color': background_color,
+                                             'name_color': name_color, 'style': 'them'}
+
+        return self._name_map[handle_id]
+
     def _generate_row(self, message: Message) -> str:
         # Specify if the message is from me, or the other person
-        if message.is_from_me:
-            who = self._me
-            style = 'me'
-        else:
-            who = self._person
-            style = 'them'
+        who_data = self._get_name(message.handle_id)
+        who = who_data['name']
+        style = who_data['style']
 
         # Check to see if we want the media box floating or fixed
         floating_option = self._database.config['DISPLAY'].get('popup location', fallback='floating')
@@ -209,17 +238,17 @@ class HTMLOutput:
         # If this message is part of a thread, then show the messages in the thread before it
         thread_table = ""
         if message.thread_originator_guid:
-            if message.thread_originator_guid in self._message_list.guids:
-                original_message = self._message_list.guids[message.thread_originator_guid]
+            if message.thread_originator_guid in self._messages.guids:
+                original_message = self._messages.guids[message.thread_originator_guid]
                 thread_list = original_message.thread
                 thread_list[original_message.rowid] = original_message
                 print_thread = []
                 # sort the threads by the date sent
                 for i in sorted(thread_list.values(), key=lambda x: x.date):
-                    if i == message: # stop at the current message
+                    if i == message:  # stop at the current message
                         break
                     print_thread.append(i)
-                thread_table = _generate_thread_table(print_thread, style)
+                thread_table = self._generate_thread_table(print_thread, style)
 
         # Generate the attachment string
         attachments_string = ""
@@ -303,7 +332,6 @@ class HTMLOutput:
         #   doesn't exist if there is no edits
 
         edited_string = ""
-        edit_table = ""
         text_cell_edit_row = ""
 
         if len(message.edits) > 0:
@@ -337,13 +365,13 @@ class HTMLOutput:
         # Put together the row cells
 
         date_cell = f'{" ":6s}<td class="date"> {self._day} {message.date} </td>\n'
-        name_cell = f'{" ":6s}<td class="name_{style}"> {who}: </td>\n'
+        name_cell = f'{" ":6s}<td class="name_{style}" style="color: {who_data["name_color"]};"> {who}: </td>\n'
 
         text_cell = f'{" ":6s}<td>\n ' \
                     f'{" ":8s}<table>\n' \
                     f'{text_cell_edit_row}' \
                     f'{" ":10s}<tr>\n' \
-                    f'{" ":12s}<td class="text_{style}">\n' \
+                    f'{" ":12s}<td class="text_{style}" style="background: {who_data["background_color"]};">\n' \
                     f'{thread_table}' \
                     f'{" ":14s}{text} {edited_string}\n' \
                     f'{" ":12s}</td>\n' \
@@ -368,20 +396,8 @@ class HTMLOutput:
         else:
             popup_location = 'left'
 
-        me_html_background_color = self._database.config['DISPLAY'].get('me html background_color',
-                                                                        fallback='AliceBlue')
-        them_html_background_color = self._database.config['DISPLAY'].get('them html background color',
-                                                                          fallback='Lavender')
         thread_background_color = self._database.config['DISPLAY'].get('thread background',
                                                                        fallback='HoneyDew')
-        me_thread_background_color = self._database.config['DISPLAY'].get('me thread background',
-                                                                          fallback='AliceBlue')
-        them_thread_background_color = self._database.config['DISPLAY'].get('them thread background',
-                                                                            fallback='Lavender')
-        me_html_name_color = self._database.config['DISPLAY'].get('me html name color',
-                                                                  fallback='Blue')
-        them_html_name_color = self._database.config['DISPLAY'].get('them html name color',
-                                                                    fallback='Purple')
 
         css = '''    <style>
 table {''' + f'''
@@ -428,7 +444,6 @@ td.date {''' + f'''
 td.name_me {''' + f'''
     text-align: right;
     font-weight: bold;
-    color: {me_html_name_color};
     width: 50px;
     padding-right: 5px;
     vertical-align: text-middle;
@@ -439,7 +454,6 @@ td.name_me {''' + f'''
 td.name_them {''' + f'''
     text-align: right;
     font-weight: bold;
-    color: {them_html_name_color};
     width: 50px;
     padding-right: 5px;
     vertical-align: text-middle;
@@ -452,7 +466,6 @@ td.text_me {''' + f'''
     border-radius: 30px;
     padding: 15px;
     border-spacing: 40px;
-    background: {me_html_background_color};  
 ''' + ''' }
 
 td.text_them {''' + f'''
@@ -461,7 +474,6 @@ td.text_them {''' + f'''
     border-radius: 30px;
     padding: 15px;
     border-spacing: 40px;
-    background: {them_html_background_color};
 ''' + ''' }
 
 .edits_me {''' + f'''
@@ -518,7 +530,6 @@ td.button-wrapper {''' + f'''
 ''' + ''' }
 
 button.text_me {''' + f'''
-    background: {me_html_background_color};
     border-radius: 30px;
     font-size: 50%;
     padding-left: 0px;
@@ -532,7 +543,6 @@ button.text_me {''' + f'''
 ''' + ''' }
 
 button.text_them {''' + f'''
-    background: {them_html_background_color};
     border-radius: 30px;
     font-size: 50%;
     padding-left: 0px;
@@ -545,17 +555,13 @@ button.text_them {''' + f'''
     border: 0px;
 ''' + ''' }
 
-reply_text_thread {''' + f'''
-    border: 2px solid;
-    background: {thread_background_color};
-    border-radius: 6px;
-    border-radius: 50px;
-    font-size: 60%
-''' + ''' }
+.reply_name {
+    font-size: 50%; 
+    text-align: right;
+}
 
 .reply_text_me {''' + f'''
     border: 2px solid;
-    background: {me_thread_background_color};
     border-radius: 6px;
     border-radius: 50px;
     font-size: 60%
@@ -563,7 +569,6 @@ reply_text_thread {''' + f'''
 
 .reply_text_them {''' + f'''
     border: 2px solid;
-    background: {them_thread_background_color};
     border-radius: 6px;
     border-radius: 50px;
     font-size: 60%
@@ -652,5 +657,5 @@ img {''' + f'''
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     ''' \
-                      f'    <title> {self._person} </title>\n{css}\n{script}\n</head>\n'
+                      f'    <title> {self._messages.title} </title>\n{css}\n{script}\n</head>\n'
         return head_string
