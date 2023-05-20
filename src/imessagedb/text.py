@@ -3,20 +3,6 @@ from datetime import datetime
 import string
 
 
-def _print_thread(thread_header, current_message: str) -> str:
-    thread_string = ""
-    thread_list = thread_header.thread
-    thread_list[thread_header.rowid] = thread_header
-    for i in sorted(thread_list.values(), key=lambda x: x.date):
-        if i == current_message:
-            break
-        attachment_string = ""
-        if i.attachments is not None:
-            attachment_string = f" Attachments: {i.attachments}"
-        thread_string = f'{thread_string}[{i.text}{attachment_string}] '
-    return thread_string
-
-
 class TextOutput:
     """ Creates a text file (or string) from a Messages list
 
@@ -87,6 +73,19 @@ class TextOutput:
 
         return self._name_map[handle_id]
 
+    def _print_thread(self, thread_header, current_message: str) -> str:
+        thread_string = ""
+        thread_list = thread_header.thread
+        thread_list[thread_header.rowid] = thread_header
+        for i in sorted(thread_list.values(), key=lambda x: x.date):
+            if i == current_message:
+                break
+            attachment_string = ""
+            if i.attachments is not None:
+                attachment_string = f" Attachments: {i.attachments}"
+            thread_string = f'{thread_string}[{self._name_map[i.handle_id]["name"]}: {i.text}{attachment_string}] '
+        return thread_string
+
     def _get_messages(self) -> None:
         for message in self._messages.message_list:
             date = message.date
@@ -114,7 +113,7 @@ class TextOutput:
             if message.thread_originator_guid:
                 if message.thread_originator_guid in self._messages.guids:
                     original_message = self._messages.guids[message.thread_originator_guid]
-                    reply_to = self._color(f'Reply to: {_print_thread(original_message, message)}',
+                    reply_to = self._color(f'Reply to: {self._print_thread(original_message, message)}',
                                            self._reply_color)
             self._string_array.append(f'<{day} {date}> {who}: {message.text} {reply_to} {attachment_string}')
 
