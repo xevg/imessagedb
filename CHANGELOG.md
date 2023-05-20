@@ -2,6 +2,13 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.0 (2023-05-20)
+### Feature
+* Add the --chat option to display chats as well as individual messages ([`a739bd1`](https://github.com/xevg/imessagedb/commit/a739bd12bfe76d32cd13f7ab8e37c44539aa4e81))
+
+### Fix
+* **message:** Change type hints ([`1c1c4aa`](https://github.com/xevg/imessagedb/commit/1c1c4aa9a16d15a69f2de48175f82d800c210cc7))
+
 ## v1.2.13 (2023-05-19)
 ### Documentation
 * Fix the changelog ([`323704b`](https://github.com/xevg/imessagedb/commit/323704b45200d9e51a386f8ee59d450a85e86698))
