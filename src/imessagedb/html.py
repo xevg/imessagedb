@@ -205,8 +205,10 @@ class HTMLOutput:
 
         while True:
             counter += 1
-            yield [background_colors[counter % len(background_color_list)],
-                   name_colors[counter % len(name_color_list)]]
+            next_background_color = counter % len(background_colors)
+            next_name_color = counter % len(name_colors)
+
+            yield [background_colors[next_background_color], name_colors[next_name_color]]
 
     def _get_name(self, handle_id: str) -> dict:
         if handle_id not in self._name_map:
