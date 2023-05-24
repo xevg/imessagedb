@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.2 (2023-05-24)
+### Fix
+* Updated the requirements ([`ba0bea8`](https://github.com/xevg/imessagedb/commit/ba0bea8bd86ec11e40afbecb569e23b713707aef))
+
 ## v1.3.1 (2023-05-20)
 ### Fix
 * **text:** Add the person's name to the reply text ([`aa9dc9e`](https://github.com/xevg/imessagedb/commit/aa9dc9e5f6cb4871ba5c5c8d7f28e610b77b5725))
