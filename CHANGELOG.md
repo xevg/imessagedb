@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.1 (2023-05-20)
+### Fix
+* **text:** Add the person's name to the reply text ([`aa9dc9e`](https://github.com/xevg/imessagedb/commit/aa9dc9e5f6cb4871ba5c5c8d7f28e610b77b5725))
+
 ## v1.3.0 (2023-05-20)
 ### Feature
 * Add the --chat option to display chats as well as individual messages ([`a739bd1`](https://github.com/xevg/imessagedb/commit/a739bd12bfe76d32cd13f7ab8e37c44539aa4e81))
