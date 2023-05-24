@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.3 (2023-05-24)
+### Fix
+* **html:** Fix indexing error ([`162c8bf`](https://github.com/xevg/imessagedb/commit/162c8bf92071e42a93a557b04feaa2c00a548836))
+
 ## v1.3.2 (2023-05-24)
 ### Fix
 * Updated the requirements ([`ba0bea8`](https://github.com/xevg/imessagedb/commit/ba0bea8bd86ec11e40afbecb569e23b713707aef))
