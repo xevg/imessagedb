@@ -27,9 +27,10 @@ DEFAULT_CONFIGURATION = '''
 copy = True
 
 # The directory to put the output. The html file will go in {copy_directory}/{Person}.html,
-#   and the attachments will go in {copy_directory}/{Person}_Attachments
+#   and the attachments will go in {copy_directory}/{Person}_Attachments. If you specify HOME, then
+#   it will put it in your home directory
 
-copy directory = /tmp
+copy directory = HOME
 
 # If the file already exists in the destination directory it is not recopied, but that can be overridden by
 #  specifying 'force copy' as true
@@ -255,7 +256,9 @@ def run() -> None:
 
             config.set(CONTROL, 'Person', person)
 
-        copy_directory = config[CONTROL].get('copy directory', fallback="/tmp")
+        copy_directory = config[CONTROL].get('copy directory', fallback=os.environ['HOME'])
+        if copy_directory == "HOME":
+            copy_directory = os.environ['HOME']
         attachment_directory = f"{copy_directory}/{safe_filename(person)}_attachments"
         config[CONTROL]['attachment directory'] = attachment_directory
 
@@ -307,11 +310,12 @@ def run() -> None:
 
         message_list = database.Messages('person', person, numbers=numbers)
 
+    me = config.get('DISPLAY', 'me', fallback='Me')
     output_type = config[CONTROL].get('output type', fallback='html')
     if output_type == 'text':
-        database.TextOutput(args.me, message_list, output_file=out).print()
+        database.TextOutput(me, message_list, output_file=out).print()
     else:
-        database.HTMLOutput(args.me, message_list, output_file=out)
+        database.HTMLOutput(me, message_list, output_file=out)
 
     database.disconnect()
 

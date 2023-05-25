@@ -95,8 +95,9 @@ file does not exist, a default configuration file will be created there. If this
 not provided, the default location is `~/.conf/iMessageDB.ini`.
 
 **-o OUTPUT_DIRECTORY, --output_directory OUTPUT_DIRECTORY** The output directory where the 
-output and attachments go. If this option is not provided, the default location is `/tmp`. 
-The files will be `/tmp/NAME.html` and attachments will be in `/tmp/NAME_Attachments`.
+output and attachments go. If this option is not provided, the default location is your
+home directory. The files will be `~/NAME.html` and attachments will be in 
+`~/NAME_Attachments`.
 
 **--database DATABASE**  The database file to open. If this option is not provided it will
 default to `~/Library/Messages/chat.db`, which is where Apple puts it.
@@ -148,9 +149,10 @@ by default:
 copy = True
 
 # The directory to put the output. The html file will go in {copy_directory}/{Person}.html,
-#   and the attachments will go in {copy_directory}/{Person}_Attachments
+#   and the attachments will go in {copy_directory}/{Person}_Attachments. If you specify HOME, then
+#   it will put it in your home directory
 
-copy directory = /tmp
+copy directory = HOME
 
 # If the file already exists in the destination directory it is not recopied, but that can be overridden by
 #  specifying 'force copy' as true
