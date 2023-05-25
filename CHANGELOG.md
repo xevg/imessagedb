@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.3.4 (2023-05-25)
+### Fix
+* **main:** Change the default directory from /tmp to $HOME ([`232cf29`](https://github.com/xevg/imessagedb/commit/232cf29ef2ade339c4f75f7826123c03f86f0d68))
+
 ## v1.3.3 (2023-05-24)
 ### Fix
 * **html:** Fix indexing error ([`162c8bf`](https://github.com/xevg/imessagedb/commit/162c8bf92071e42a93a557b04feaa2c00a548836))
