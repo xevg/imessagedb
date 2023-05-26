@@ -117,8 +117,7 @@ class HTMLOutput:
                                    f'{self._messages.title}{date_string}.</div><p>\n'
 
         self._html_array.append(self._generate_table(self._messages))
-        self._print_and_save('</body>\n</html>\n',
-                             self._html_array)
+        self._print_and_save('</body>\n</html>\n', self._html_array, eof=True)
 
     def __repr__(self) -> str:
         return ''.join(self._html_array)
@@ -135,7 +134,7 @@ class HTMLOutput:
         print('\n'.join(self._html_array))
         return
 
-    def _print_and_save(self, message: str, array: list, new_day: bool = False) -> None:
+    def _print_and_save(self, message: str, array: list, new_day: bool = False, eof: bool = False) -> None:
         """ Save to the output file while it is processing """
 
         if self._current_messages_processed == 0:
@@ -143,17 +142,18 @@ class HTMLOutput:
 
             new_file_array = [self._generate_head(), "<body>\n", self._file_header_string,
                               f'{" ":2s}<div class="picboxframe"  id="picbox"> <img src="" /> </div>\n',
-                              f'{" ":2s}<table>\n{" ":4s}<tr>\n']
+                              f'{" ":2s}<table style="table-layout: fixed;">\n{" ":4s}<tr>\n']
             if self._previous_output_filename:
-                new_file_array.append(f'{" ":6s}<td style="text-align: left;">'
+                new_file_array.append(f'{" ":6s}<td style="text-align: left; width: 33%;">'
                                       f'<a href="file://{self._previous_output_filename}"> &lt </a> </td>\n'
-                                      f'{" ":6s}<td style="text-align: center;"><div class="next_file">' +
+                                      f'{" ":6s}<td style="text-align: center; width: 33%;"><div class="next_file">' +
                                       f'<a href="file://{self._previous_output_filename}">' +
                                       f' Previous Messages {self._previous_range}</a></div></td>\n')
             else:
-                new_file_array.append(f'{" ":6s}<td> </td>\n{" ":6s}<td> </td>\n')
+                new_file_array.append(f'{" ":6s}<td style="width: 33%;"> </td>\n'
+                                      f'{" ":6s}<td style="width: 33%;"> </td>\n')
 
-            new_file_array.append(f'{" ":6s}<td style="text-align: right;" id="next_page"> </td>\n'
+            new_file_array.append(f'{" ":6s}<td style="text-align: right; width: 33%;" id="next_page"> </td>\n'
                                   f'{" ":4s}</tr>\n{" ":2s}</table>\n\n')
             new_file_array.append(f'{" ":2s}<table class="main_table">\n{" ":2s}</table>\n')
 
@@ -166,6 +166,19 @@ class HTMLOutput:
         self._current_messages_processed += 1
         if self._output_filename is None:  # We are not writing to a file
             return
+
+        if eof:
+            # Normally this gets done on the file split, but the eof indicates its last file, so do it
+            #  on the last write
+
+            description_string = f' This page contains {self._current_messages_processed:,} messages from ' \
+                                 f'{self._file_start_date.strftime("%A %Y-%m-%d")} to ' \
+                                 f'{self._file_end_date.strftime("%A %Y-%m-%d")}.'
+            print(f' <script>\n'
+                  f'  el = document.getElementById("file_summary")\n'
+                  f'  new_text = el.innerHTML.concat("{description_string}")\n'
+                  f'  el.innerHTML = new_text\n',
+                  f' </script>\n', file=self._output_file_handle)
 
         print(message, end="", file=self._output_file_handle)
 
@@ -189,7 +202,7 @@ class HTMLOutput:
                   f'  new_text = el.innerHTML.concat("{description_string}")\n'
                   f'  el.innerHTML = new_text\n'
                   f'  document.getElementById("next_page").innerHTML = '
-                  f'   "<a href=\'file://{self._current_output_filename}\'> &gt </a>"\n'
+                  f'   "<a href=\'file://{self._current_output_filename}\'> Next Page &gt </a>"\n'
                   f' </script>', file=self._output_file_handle)
             print('</body>\n</html>\n', end="", file=self._output_file_handle)
             self._output_file_handle.close()

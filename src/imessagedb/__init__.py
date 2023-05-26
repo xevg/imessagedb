@@ -208,7 +208,7 @@ def run() -> None:
         config.set(CONTROL, 'skip attachments', 'True')
     if args.inline:
         config.set(DISPLAY, 'inline attachments', 'True')
-    if args.split_line:
+    if args.split_output:
         config.set(DISPLAY, 'split output', args.split_output)
 
     start_date = None
