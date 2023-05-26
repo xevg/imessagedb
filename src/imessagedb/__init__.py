@@ -13,7 +13,7 @@ import configparser
 import logging
 import argparse
 import sys
-from datetime import datetime
+import dateutil.parser
 from imessagedb.db import DB
 from imessagedb.utils import *
 
@@ -54,7 +54,13 @@ verbose = True
 
 # Output type, either html or text
 
-output_type = html
+output type = html
+
+# Number of messages in each html file. If this is 0 or not specified, it will be one large file.
+#  There may be more messages than this per file, as it splits at the next date change after that number 
+#  of messages. 
+
+split output = 1000
 
 # Inline attachments mean that the images are in the HTML instead of loaded when hovered over
 
@@ -161,13 +167,17 @@ def run() -> None:
     copy_mutex_group.add_argument("--no_copy", help="Don't copy the attachments", action="store_true")
     argument_parser.add_argument("--no_attachments", help="Don't process attachments at all", action="store_true")
     argument_parser.add_argument("-v", "--verbose", help="Turn on additional output", action="store_true")
-    argument_parser.add_argument('--start_time', help="The start time of the messages in YYYY-MM-DD HH:MM:SS format")
-    argument_parser.add_argument('--end_time', help="The end time of the messages in YYYY-MM-DD HH:MM:SS format")
-    argument_parser.add_argument('--version', help="Prints the version number", action="store_true")
+    argument_parser.add_argument('--start_time', '--start-time',
+                                 help="The start date/time of the messages")
+    argument_parser.add_argument('--end_time', '--end-time',
+                                 help="The end date/time of the messages")
+    argument_parser.add_argument('--split_output', '--split-output',
+                                 help="Split the html output into files with this many messages per file")
     argument_parser.add_argument('--get_handles', '--get-handles',
                                  help="Display the list of handles in the database and exit", action="store_true")
     argument_parser.add_argument('--get_chats', '--get-chats',
                                  help="Display the list of chats in the database and exit", action="store_true")
+    argument_parser.add_argument('--version', help="Prints the version number", action="store_true")
 
     args = argument_parser.parse_args()
 
@@ -198,12 +208,14 @@ def run() -> None:
         config.set(CONTROL, 'skip attachments', 'True')
     if args.inline:
         config.set(DISPLAY, 'inline attachments', 'True')
+    if args.split_line:
+        config.set(DISPLAY, 'split output', args.split_output)
 
     start_date = None
     end_date = None
     if args.start_time:
         try:
-            start_date = datetime.strptime(args.start_time, '%Y-%m-%d %H:%M:%S')
+            start_date = dateutil.parser.parse(args.start_time)
         except ValueError as exp:
             argument_parser.print_help(sys.stderr)
             print(f"\n **Start time not correct: {exp}", file=sys.stderr)
@@ -211,7 +223,7 @@ def run() -> None:
         config.set(CONTROL, 'start time', str(start_date))
     if args.end_time:
         try:
-            end_date = datetime.strptime(args.end_time, '%Y-%m-%d %H:%M:%S')
+            end_date = dateutil.parser.parse(args.end_time)
         except ValueError as exp:
             argument_parser.print_help(sys.stderr)
             print(f"\n** End time not correct: {exp}", file=sys.stderr)
@@ -233,6 +245,8 @@ def run() -> None:
     if not generic_database_request:
         if args.chat:
             person = f"chat_{args.chat}"
+            if args.name:
+                person = args.name
         else:
             if args.handle:
                 numbers = args.handle
@@ -262,8 +276,6 @@ def run() -> None:
         attachment_directory = f"{copy_directory}/{safe_filename(person)}_attachments"
         config[CONTROL]['attachment directory'] = attachment_directory
 
-        filename = f'{safe_filename(person)}.html'
-        out = open(f"{copy_directory}/{filename}", 'w')
         try:
             os.mkdir(attachment_directory)
         except FileExistsError:
@@ -294,10 +306,12 @@ def run() -> None:
                 exit(1)
             chat_id = chats[0].rowid
             title = args.chat
-        elif args.chat in database.chats.chat_list:
-            chat_id = args.chat
+        elif int(args.chat) in database.chats.chat_list:
+            chat_id = int(args.chat)
             if database.chats.chat_list[chat_id].chat_name:
                 title = database.chats.chat_list[chat_id].chat_name
+            elif args.name:
+                title = args.name
             else:
                 title = chat_id
         else:
@@ -311,11 +325,13 @@ def run() -> None:
         message_list = database.Messages('person', person, numbers=numbers)
 
     me = config.get('DISPLAY', 'me', fallback='Me')
+
+    filename = os.path.join(copy_directory, safe_filename(person))
     output_type = config[CONTROL].get('output type', fallback='html')
     if output_type == 'text':
         database.TextOutput(me, message_list, output_file=out).print()
     else:
-        database.HTMLOutput(me, message_list, output_file=out)
+        database.HTMLOutput(me, message_list, output_file=filename)
 
     database.disconnect()
 

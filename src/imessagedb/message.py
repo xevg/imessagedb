@@ -16,6 +16,8 @@ def _convert_attributed_body(encoded: bytes) -> str:
     text = text[6:-12]
     if b'\x01' in text:
         text = text.split(b'\x01')[1]
+    if b'\x02' in text:
+        text = text.split(b'\x02')[1]
     if b'\x00' in text:
         text = text.split(b'\x00')[1]
     if b'\x86' in text:

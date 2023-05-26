@@ -6,9 +6,8 @@ from imessagedb.message import Message
 from imessagedb.messages import Messages
 from alive_progress import alive_bar
 
-
-url_pattern = re.compile(r"((https?):((//)|(\\\\))+[\w\d:#@%/;$()~_?\+-=\\\.&]*)", re.MULTILINE | re.UNICODE)
-mailto_pattern = re.compile(r"([\w\-\.]+@(\w[\w\-]+\.)+[\w\-]+)", re.MULTILINE | re.UNICODE)
+url_pattern = re.compile(r'((https?):((//)|(\\\\))+[\w\d:#@%/;$()~_?+-=\\.&]*)', re.MULTILINE | re.UNICODE)
+mailto_pattern = re.compile(r'([\w\-.]+@(\w[\w\-]+\.)+[\w\-]+)', re.MULTILINE | re.UNICODE)
 
 
 def _replace_url_to_link(value: str) -> str:
@@ -32,7 +31,7 @@ class HTMLOutput:
     copy = True :
                 If the attachments are not copied, they are not available on the HTML output.
                 There are two reasons for that. 1) The web browser does not have access to the directory
-                that the attachments are stored, so it cannot display them 2) Some of the attachments need
+                that the attachments are stored, so it cannot display them 2) Some attachments need
                 to be converted in order to be viewed in the browser, and need a place to live.
 
     skip attachments = False :
@@ -61,7 +60,7 @@ class HTMLOutput:
         The background color of the thread in replies
     """
 
-    def __init__(self, database, me: str, messages: Messages, inline=False, output_file=None) -> None:
+    def __init__(self, database, me: str, messages: Messages, inline: bool = False, output_file: str = None) -> None:
         """
             Parameters
             ----------
@@ -77,7 +76,7 @@ class HTMLOutput:
             inline : bool
                 Display attachments inline or not
 
-            output_filename : str
+            output_file : str
                 The name of the output file"""
 
         self._database = database
@@ -85,28 +84,37 @@ class HTMLOutput:
         self._messages = messages
         self._attachment_list = self._database.attachment_list
         self._inline = inline
-        self._output_file = output_file
 
         self._name_map = {}
         self._color_list = self._get_next_color()
         self._day = 'UNK'
         self._html_array = []
-        self._print_and_save(self._generate_head(), self._html_array)
-        self._print_and_save("<body>\n", self._html_array)
+        self._current_messages_processed = 0
+        self._current_messages_file = 0
+        self._file_start_date: datetime = None
+        self._file_end_date: datetime = None
+        self._previous_range: str = None
+        self._last_row_had_conversion = False
+
+        if output_file is not None:
+            self._output_filename = output_file
+            self._split_output = self._database.config.getint('DISPLAY', 'split output', fallback=0)
+            self._previous_output_filename = None
+            self._current_output_filename = f"{self._output_filename}.html"
+            self._output_file_handle = open(self._current_output_filename, "w")
+        else:
+            self._output_filename = None
 
         start_time = self._database.control.get('start time', fallback=None)
         end_time = self._database.control.get('end time', fallback=None)
         date_string = ""
         if start_time:
-            date_string = f"from {start_time} "
+            date_string = f" from {start_time}"
         if end_time:
             date_string = f"{date_string} until {end_time}"
 
-        self._print_and_save(f"Exchanged {len(self._messages):,} messages with " +
-                             f"{self._messages.title} {date_string}<p>\n",
-                             self._html_array)
-        self._print_and_save(f'{" ":2s}<div class="picboxframe"  id="picbox"> <img src="" /> </div>\n',
-                             self._html_array)
+        self._file_header_string = f'  <div id="file_summary">Exchanged {len(self._messages):,} total messages with ' \
+                                   f'{self._messages.title}{date_string}.</div><p>\n'
 
         self._html_array.append(self._generate_table(self._messages))
         self._print_and_save('</body>\n</html>\n',
@@ -115,9 +123,11 @@ class HTMLOutput:
     def __repr__(self) -> str:
         return ''.join(self._html_array)
 
-    def save(self) -> None:
+    def save(self, filename: str) -> None:
         """ Write the output to the output file"""
-        print('\n'.join(self._html_array), file=self._output_file)
+        file_handle = open(filename, "w")
+        print('\n'.join(self._html_array), file=file_handle)
+        file_handle.close()
         return
 
     def print(self) -> None:
@@ -125,15 +135,72 @@ class HTMLOutput:
         print('\n'.join(self._html_array))
         return
 
-    def _print_and_save(self, message: str, array: list) -> None:
+    def _print_and_save(self, message: str, array: list, new_day: bool = False) -> None:
         """ Save to the output file while it is processing """
+
+        if self._current_messages_processed == 0:
+            # If this is a new file, because it is either the first pass through, or if we need to create new file
+
+            new_file_array = [self._generate_head(), "<body>\n", self._file_header_string,
+                              f'{" ":2s}<div class="picboxframe"  id="picbox"> <img src="" /> </div>\n',
+                              f'{" ":2s}<table>\n{" ":4s}<tr>\n']
+            if self._previous_output_filename:
+                new_file_array.append(f'{" ":6s}<td style="text-align: left;">'
+                                      f'<a href="file://{self._previous_output_filename}"> &lt </a> </td>\n'
+                                      f'{" ":6s}<td style="text-align: center;"><div class="next_file">' +
+                                      f'<a href="file://{self._previous_output_filename}">' +
+                                      f' Previous Messages {self._previous_range}</a></div></td>\n')
+            else:
+                new_file_array.append(f'{" ":6s}<td> </td>\n{" ":6s}<td> </td>\n')
+
+            new_file_array.append(f'{" ":6s}<td style="text-align: right;" id="next_page"> </td>\n'
+                                  f'{" ":4s}</tr>\n{" ":2s}</table>\n\n')
+            new_file_array.append(f'{" ":2s}<table class="main_table">\n{" ":2s}</table>\n')
+
+            for i in new_file_array:
+                array.append(i)
+                if self._output_filename is not None:
+                    print(i, end="", file=self._output_file_handle)
+
         array.append(message)
-        if self._output_file:
-            print(message, end="", file=self._output_file)
+        self._current_messages_processed += 1
+        if self._output_filename is None:  # We are not writing to a file
+            return
+
+        print(message, end="", file=self._output_file_handle)
+
+        if new_day and 0 < self._split_output < self._current_messages_processed:
+            total_processed = self._current_messages_processed
+            self._current_messages_processed = 0
+            self._current_messages_file += 1
+            self._previous_output_filename = self._current_output_filename
+            self._current_output_filename = f"{self._output_filename}_{self._current_messages_file:02d}.html"
+
+            print(f'    <p><div class="next_file"><a href="file://{self._current_output_filename}">'
+                  f' Next Messages </a></div>\n', end="", file=self._output_file_handle)
+            description_string = f' This page contains {total_processed:,} messages from ' \
+                                 f'{self._file_start_date.strftime("%A %Y-%m-%d")} to ' \
+                                 f'{self._file_end_date.strftime("%A %Y-%m-%d")}.'
+            self._previous_range = f'<br><div style="font-size: 50%;">' \
+                                   f'({self._file_start_date.strftime("%A %Y-%m-%d")} to ' \
+                                   f'{self._file_end_date.strftime("%A %Y-%m-%d")})</div>'
+            print(f' <script>\n'
+                  f'  el = document.getElementById("file_summary")\n'
+                  f'  new_text = el.innerHTML.concat("{description_string}")\n'
+                  f'  el.innerHTML = new_text\n'
+                  f'  document.getElementById("next_page").innerHTML = '
+                  f'   "<a href=\'file://{self._current_output_filename}\'> &gt </a>"\n'
+                  f' </script>', file=self._output_file_handle)
+            print('</body>\n</html>\n', end="", file=self._output_file_handle)
+            self._output_file_handle.close()
+            print(f"Creating output file {self._current_output_filename}")
+            self._output_file_handle = open(self._current_output_filename, "w")
 
     def _generate_thread_row(self, message: Message) -> str:
-        who_data = self._get_name(message.handle_id)
-        who = who_data['name']
+        if message.is_from_me:
+            who_data = self._get_name(0)
+        else:
+            who_data = self._get_name(message.handle_id)
         style = who_data['style']
 
         text = message.text
@@ -174,14 +241,22 @@ class HTMLOutput:
                 if today != previous_day:
                     previous_day = today
 
-                    # If it's a new day, end the table, and start a new one
-                    self._print_and_save(f'{" ":2s}</table>\n\n{" ":2s}<table class="main_table">\n', table_array)
+                    message_date = datetime(int(message.date[0:4]), int(message.date[5:7]), int(message.date[8:10]),
+                                            int(message.date[11:13]), int(message.date[14:16]),
+                                            int(message.date[17:19]))
 
-                    self._day = datetime(int(message.date[0:4]), int(message.date[5:7]), int(message.date[8:10]),
-                                         int(message.date[11:13]), int(message.date[14:16]),
-                                         int(message.date[17:19])).strftime('%a')
+                    if self._file_start_date is None:
+                        self._file_start_date = message_date
+                    self._file_end_date = message_date
+
+                    # If it's a new day, end the table, and start a new one
+                    self._print_and_save(f'{" ":2s}</table>\n\n', table_array, new_day=True)
+                    self._print_and_save(f'{" ":2s}<table class="main_table">\n', table_array)
+
+                    self._day = message_date.strftime('%a')
+                self._last_row_had_conversion = False
                 self._print_and_save(self._generate_row(message), table_array)
-                if message.attachments:
+                if self._last_row_had_conversion:
                     bar()
                 else:
                     bar(skipped=True)
@@ -229,7 +304,10 @@ class HTMLOutput:
 
     def _generate_row(self, message: Message) -> str:
         # Specify if the message is from me, or the other person
-        who_data = self._get_name(message.handle_id)
+        if message.is_from_me:
+            who_data = self._get_name(0)
+        else:
+            who_data = self._get_name(message.handle_id)
         who = who_data['name']
         style = who_data['style']
 
@@ -256,24 +334,32 @@ class HTMLOutput:
         attachments_string = ""
         if message.attachments:
             for attachment_key in message.attachments:
+                # If the attachment listed does not exist, then just list is as missing and continue to the next one
                 if attachment_key not in self._attachment_list.attachment_list:
                     attachments_string = f'{attachments_string} <span class="missing"> Attachment missing </span> '
                     continue
 
                 attachment = self._attachment_list.attachment_list[attachment_key]
-                attachment_string = ""
+                # If the attachment exists, but we have it marked to skip, skip it
                 if attachment.skip:
                     continue
+
+                # If the attachment exists, but is marked as missing, list it as missing and continue
                 if attachment.missing:
-                    attachment_string = f'{attachments_string} <span class="missing"> Attachment missing </span> '
+                    attachments_string = f'{attachments_string} <span class="missing"> Attachment missing </span> '
                     continue
+
+                # If we should copy the attachment, copy it or convert it
                 if attachment.copy:
                     if attachment.conversion_type == 'HEIC':
                         attachment.convert_heic_image(attachment.original_path, attachment.destination_path)
+                        self._last_row_had_conversion = True
                     elif attachment.conversion_type == 'Audio' or attachment.conversion_type == 'Video':
                         attachment.convert_audio_video(attachment.original_path, attachment.destination_path)
+                        self._last_row_had_conversion = True
                     else:
                         attachment.copy_attachment()
+                        self._last_row_had_conversion = True
 
                 if floating:
                     box_name = f'PopUp{attachment.rowid}'
@@ -481,7 +567,7 @@ td.text_them {''' + f'''
 .edits_me {''' + f'''
     display: none;
     font-size: 70%;
-    font-style: italics;
+    font-style: italic;
     text-align: right;
     border-radius: 30px;
 ''' + ''' }  
@@ -489,7 +575,7 @@ td.text_them {''' + f'''
 .edits_them {''' + f'''
     display: none;
     font-size: 70%;
-    font-style: italics;
+    font-style: italic;
     text-align: left;
     border-radius: 30px;
 ''' + ''' }    
@@ -611,6 +697,15 @@ img {''' + f'''
     transition: all .5s ease;
 
 ''' + ''' }
+
+.next_file {
+    text-align: center;
+    font-size: 150%;
+}
+
+#file_summary {
+    font-style: italic;
+}
 
     </style>'''
         script = '''  <script>

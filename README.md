@@ -69,10 +69,10 @@ optional arguments:
   --no_attachments      Don't process attachments at all
   -v, --verbose         Turn on additional output
   --start_time START_TIME
-                        The start time of the messages in YYYY-MM-DD HH:MM:SS
-                        format
-  --end_time END_TIME   The end time of the messages in YYYY-MM-DD HH:MM:SS
-                        format
+                        The start time of the messages
+  --end_time END_TIME   The end time of the messages
+  --split_output SPLIT_OUTPUT
+                        Split the html output into files with this many messages per file
   --version             Show the version number and exit
   --get_handles         Display the list of handles in the database and exit
   --get_chats           Display the list of chats in the database and exit
@@ -108,11 +108,13 @@ provided it will default to `Me`.
 **-t {text,html}, --output_type {text,html}** The type of output, either *text* or *html*. 
 If this option is not provided it will default to `html`.
 
-
 **--start_time START_TIME** <br>
 **--end_time END_TIME** By default, the program will process all messages. If you want
 to restrict that to particular timeframe, you can specify the `--start-time` and/or `--end_time`
-options in the  YYYY-MM-DD HH:MM:SS  format
+options
+
+**--split_output SPLIT_OUTPUT** Split the html output into files with this many messages 
+per file
 
 **-i, --inline**   Show the attachments inline. By default, the attachments will show as links
 that you can hover over and it will pop up the attachment. With this option, it will put them
@@ -129,7 +131,6 @@ viewing
 **-v, --verbose**         Turn on additional output
 
 **--version**  Shows the version number and exits
-
 
 **--get_handles** Display the list of handles in the database and exit
 
@@ -177,6 +178,10 @@ verbose = True
 # Output type, either html or text
 
 output_type = html
+
+# Number of messages in each html file. If this is 0 or not specified, it will be one large file.
+
+output split = 1000
 
 # Inline attachments mean that the images are in the HTML instead of loaded when hovered over
 

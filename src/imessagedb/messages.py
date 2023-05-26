@@ -103,8 +103,6 @@ class Messages:
                     if rowid in self._database.attachment_list.message_join:
                         attachment_list = self._database.attachment_list.message_join[rowid]
 
-                skipped = True
-
                 new_message = Message(self._database, rowid, guid, date, is_from_me, handle_id, attributed_body,
                                       message_summary_info, text, reply_to_guid, thread_originator_guid,
                                       thread_originator_part, chat_id, attachment_list)
@@ -115,7 +113,7 @@ class Messages:
                 if thread_originator_guid:
                     self._guids[thread_originator_guid].thread[rowid] = new_message
 
-                bar(skipped=skipped)
+                bar()
                 i = self._database.connection.fetchone()
 
         self._sorted_message_list = sorted(self._message_list.values(), key=lambda x: x.date)
