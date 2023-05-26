@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.4.0 (2023-05-26)
+### Feature
+* **html:** Add pagination of the html output ([`d2f1d19`](https://github.com/xevg/imessagedb/commit/d2f1d19ebc7b5a417d87c466bc7f0da9fbb81765))
+
 ## v1.3.4 (2023-05-25)
 ### Fix
 * **main:** Change the default directory from /tmp to $HOME ([`232cf29`](https://github.com/xevg/imessagedb/commit/232cf29ef2ade339c4f75f7826123c03f86f0d68))
