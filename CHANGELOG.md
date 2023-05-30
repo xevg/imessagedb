@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.4.1 (2023-05-26)
+### Fix
+* **html:** Fix a typo and an oversight ([`39d1082`](https://github.com/xevg/imessagedb/commit/39d10828fc44ff9744424bd6f7a77c4e7323489e))
+
 ## v1.4.0 (2023-05-26)
 ### Feature
 * **html:** Add pagination of the html output ([`d2f1d19`](https://github.com/xevg/imessagedb/commit/d2f1d19ebc7b5a417d87c466bc7f0da9fbb81765))
