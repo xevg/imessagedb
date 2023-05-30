@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.4.2 (2023-05-30)
+### Fix
+* **text:** Fix labeling of sender ([`f04f0de`](https://github.com/xevg/imessagedb/commit/f04f0de59ffd1ed81f48ee9194d72fd8290dd677))
+
 ## v1.4.1 (2023-05-26)
 ### Fix
 * **html:** Fix a typo and an oversight ([`39d1082`](https://github.com/xevg/imessagedb/commit/39d10828fc44ff9744424bd6f7a77c4e7323489e))
