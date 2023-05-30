@@ -94,7 +94,10 @@ class TextOutput:
                            int(date[11:13]), int(date[14:16]),
                            int(date[17:19])).strftime('%a')
 
-            who_data = self._get_name(message.handle_id)
+            if message.is_from_me:
+                who_data = self._get_name(0)
+            else:
+                who_data = self._get_name(message.handle_id)
             who = self._color(who_data['name'], who_data['color'], attrs=['bold'])
 
             reply_to = ""
