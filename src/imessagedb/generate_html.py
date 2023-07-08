@@ -246,7 +246,7 @@ class HTMLOutput:
         previous_day = ''
 
         message_count = 0
-        with alive_bar(len(message_list), title="Generating HTML", stats="({rate}, eta: {eta})") as bar:
+        with alive_bar(len(message_list), title="Generating HTML", stats="({rate}, eta: {eta})", comma=True) as bar:
             for message in message_list:
                 message_count = message_count + 1
 

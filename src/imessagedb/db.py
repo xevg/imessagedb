@@ -6,9 +6,9 @@ import imessagedb
 from imessagedb.attachments import Attachments
 from imessagedb.chats import Chats
 from imessagedb.handles import Handles
-from imessagedb.html import HTMLOutput
+from imessagedb.generate_html import HTMLOutput
 from imessagedb.messages import Messages
-from imessagedb.text import TextOutput
+from imessagedb.generate_text import TextOutput
 
 
 class DB:
