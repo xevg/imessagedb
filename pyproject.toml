@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "imessagedb"
-version = "1.4.6"
+version = "1.4.7"
 description = "Reads and displays the Apple iMessage database"
 authors = ["xev <git@schore.org>"]
 license = "MIT"
