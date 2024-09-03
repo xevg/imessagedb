@@ -57,7 +57,8 @@ class Messages:
                            " )" \
                            f") {time_where_clause}"
             select_string = "select message.rowid, guid, " \
-                            "datetime(message.date/1000000000 + strftime('%s', '2001-01-01'),'unixepoch','localtime'), " \
+                            "datetime(message.date/1000000000 + " \
+                            "strftime('%s', '2001-01-01'),'unixepoch','localtime'), " \
                             "message.is_from_me, message.handle_id, " \
                             " message.attributedBody, message.message_summary_info, message.text, " \
                             "reply_to_guid, thread_originator_guid, thread_originator_part, cmj.chat_id  " \
@@ -69,7 +70,8 @@ class Messages:
             where_clause = f"rowid in (select message_id from chat_message_join where chat_id = {self._chat_id}) " \
                            f" {time_where_clause}"
             select_string = "select message.rowid, guid, " \
-                            "datetime(message.date/1000000000 + strftime('%s', '2001-01-01'),'unixepoch','localtime'), " \
+                            "datetime(message.date/1000000000 + " \
+                            "strftime('%s', '2001-01-01'),'unixepoch','localtime'), " \
                             "message.is_from_me, message.handle_id, " \
                             " message.attributedBody, message.message_summary_info, message.text, " \
                             "reply_to_guid, thread_originator_guid, thread_originator_part, cmj.chat_id  " \
@@ -110,7 +112,7 @@ class Messages:
                 self._message_list[rowid] = new_message
 
                 # Manage the thread
-                if thread_originator_guid:
+                if thread_originator_guid and thread_originator_guid in self._guids:
                     self._guids[thread_originator_guid].thread[rowid] = new_message
 
                 bar()
@@ -122,6 +124,42 @@ class Messages:
     def message_list(self) -> list:
         """ Returns a list of messages sorted by the date of the message"""
         return self._sorted_message_list
+
+    def stats(self) -> list:
+        """ Returns a list of stats about the message list suitable for importing into a spreadsheet.
+
+         The fields returned are:
+            name: The name of the person sending the message
+            date: The date of the message
+            character_count: The number of characters in the message
+            word_count: The number of words in the message
+            text: The text of the message
+        """
+
+        result = []
+
+        for i in self._sorted_message_list:
+            if i.text is not None:
+                # Take out the carriage returns so this can be parsed by a spreadsheet
+                text = i.text.replace('\n', ' ')
+                text_len = len(i.text)
+                word_count = len(i.text.split(' '))
+            else:
+                text = ""
+                text_len = 0
+                word_count = 0
+            date = i.date
+            stats = {'name': i.name, 'date': date, 'character_count': text_len, 'word_count': word_count, 'text': text}
+            result.append(stats)
+        return result
+
+    def print_stats(self) -> str:
+        """ Returns a string of stats about the message list suitable for importing into a spreadsheet """
+
+        result = ["Name\tDate\tCharacter Count\tWord Count\tText"]
+        for i in self.stats():
+            result.append(f"{i['name']}\t{i['date']}\t{i['character_count']}\t{i['word_count']}\t{i['text']}")
+        return '\n'.join(result)
 
     @property
     def guids(self) -> dict:
