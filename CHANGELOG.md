@@ -2,6 +2,11 @@
 
 <!--next-version-placeholder-->
 
+## v1.4.8 (2024-09-03)
+### Fix
+* **messages:** Check for invalid key ([`3be020b`](https://github.com/xevg/imessagedb/commit/3be020ba3156ca8bf9444ae8fb9d69a9f533fbb9))
+* **messages:** Check for invalid key ([`4cb3d7e`](https://github.com/xevg/imessagedb/commit/4cb3d7ee783408b13071e286926287d9576e03a3))
+
 ## v1.4.7 (2024-02-17)
 
 
